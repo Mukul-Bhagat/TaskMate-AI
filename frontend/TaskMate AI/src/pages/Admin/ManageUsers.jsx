@@ -24,6 +24,7 @@ const ManageUsers = () => {
       }
     } catch (error) {
       console.error("Error fetching users:", error);
+      toast.error("Failed to fetch team members.");
     }
   };
   
@@ -45,7 +46,22 @@ const ManageUsers = () => {
   };
 
   const handleDownloadReport = async () => {
-    // ... your existing download report logic is perfect
+    try {
+      const response = await axiosInstance.get(API_PATHS.REPORTS.EXPORT_USERS, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "team_members_report.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      toast.error("Failed to download report.");
+    }
   };
 
   useEffect(() => {
