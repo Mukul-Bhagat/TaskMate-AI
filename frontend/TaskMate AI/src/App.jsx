@@ -45,36 +45,26 @@ const App = () => {
           {/* User Private Routes */}
           <Route element={<PrivateRoutes allowedRoles={["user"]} />}>
             <Route path="/user/dashboard" element={<UserDashboard />} />
-            <Route path="/user/my-tasks" element={<MyTasks />} />
+            {/* FIX: Corrected the path to match what you are visiting */}
+            <Route path="/user/tasks" element={<MyTasks />} />
             <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
-            <Route path="/admin/tasks" element={<ManageTasks />} />
-            
           </Route>
-          <Route path="/" element={<Root/>}/>
+          
         </Routes>
       </Router>
-      <Toaster 
-        toastOptions={{
-          className:"",
-          style:{
-            fontSize:"13px",
-          }
-        }
-        }
-      />
+      <Toaster />
     </UserProvider>
   );
 };
 
-export default App;
-
 // This component handles the initial redirect after login
 const Root = () => {
   const { user, loading } = useContext(UserContext);
-  if (loading) return <Outlet/>
+  if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" />;
   return user.role === "admin" 
     ? <Navigate to="/admin/dashboard" /> 
     : <Navigate to="/user/dashboard" />;
 };
 
+export default App;
