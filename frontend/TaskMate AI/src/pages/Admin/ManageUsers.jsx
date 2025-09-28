@@ -82,10 +82,13 @@ const ManageUsers = () => {
             >
               <LuPlus /> Invite User
             </button>
-            <button className="download-btn" onClick={handleDownloadReport}>
+            <button
+              className="flex download-btn gap-4"
+              onClick={handleDownloadReport}
+            >
               <LuFileSpreadsheet className="text-lg" />
               Download Report
-            </button>
+            </button>            
           </div>
         </div>
 

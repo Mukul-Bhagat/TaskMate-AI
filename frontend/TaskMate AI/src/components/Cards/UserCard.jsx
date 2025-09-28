@@ -2,13 +2,13 @@ import React from 'react';
 
 const UserCard = ({ userInfo }) => {
   return (
-    <div className="user-card p-2">
+    <div className="card"> {/* Assuming you have a .card class for styling */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
-            src={userInfo?.profileImageUrl}
-            alt={'Avatar'}
-            className="w-12 h-12 rounded-full border-2 border-white"
+            src={userInfo?.profileImageUrl || null}
+            alt={userInfo?.name || 'Avatar'}
+            className="w-12 h-12 rounded-full object-cover bg-slate-200"
           />
           <div>
             <p className="text-sm font-medium">{userInfo?.name}</p>
@@ -16,49 +16,48 @@ const UserCard = ({ userInfo }) => {
           </div>
         </div>
       </div>
-      <div className="flex items-end gap-3 mt-5">
-        <statCard
-            label="Pending"
-            count={userInfo?.pendingTasks || 0}
-            status="Pending"
+      <div className="flex items-center justify-between gap-3 mt-4 border-t border-slate-200 pt-4">
+        {/* FIX 1: Changed to uppercase <StatCard /> */}
+        <StatCard
+          label="Pending"
+          count={userInfo?.pendingTasks || 0}
+          status="Pending"
         />
-
-        <statCard
-            label="In Progress"
-            count={userInfo?.inProgressTasks || 0}
-            status="In Progress"
+        <StatCard
+          label="In Progress"
+          count={userInfo?.inProgressTasks || 0}
+          status="In Progress"
         />
-
-        <statCard
-            label="Completed"
-            count={userInfo?.compltedTasks || 0}
-            status="Completed"
+        <StatCard
+          label="Completed"
+          // FIX 2: Corrected typo from "compltedTasks"
+          count={userInfo?.completedTasks || 0}
+          status="Completed"
         />
-
-
       </div>
     </div>
   );
 };
 
-export default UserCard;
-
 const StatCard = ({ label, count, status }) => {
   const getStatusTagColor = () => {
     switch (status) {
       case "In Progress":
-        return "text-cyan-500 bg-cyan-50";
+        return "text-cyan-600";
       case "Completed":
-        return "text-indigo-500 bg-indigo-50";
+        return "text-lime-600";
       default: // For "Pending"
-        return "text-violet-500 bg-violet-50";
+        return "text-violet-600";
     }
   };
 
   return (
-        <div className={`flex-1 text-[10px] font-medium ${getStatusTagColor()} px-4 py-0.5 rounded`}>
-          <span className="text-[12px] font-semibold">{count}</span>
-        </div>
-    
+    <div className="text-center">
+      <p className={`font-semibold ${getStatusTagColor()}`}>{count}</p>
+      {/* FIX 3: Added the label to be displayed */}
+      <span className="text-xs text-slate-500">{label}</span>
+    </div>
   );
 };
+
+export default UserCard;
