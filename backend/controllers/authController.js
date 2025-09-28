@@ -168,4 +168,5 @@ module.exports = {
   updateUserProfile,
   googleAuth,
   googleAuthCallback,
+  generateToken,
 };
