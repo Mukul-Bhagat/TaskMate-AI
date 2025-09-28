@@ -4,7 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Input from "../../components/inputs/input";
 import { validateEmail } from "../../utils/helper";
 import axiosInstance from "../../utils/axiosInstance";
-import { API_PATHS } from "../../utils/apiPaths"; // <-- FIX #1: Added missing import
+import { API_PATHS, BASE_URL } from "../../utils/apiPaths"; // <-- FIX #1: Added missing import
 import { UserContext } from "../../context/userContext";
 import { FcGoogle } from "react-icons/fc";
 
@@ -62,9 +62,8 @@ const Login = () => {
   }; // <-- The handleLogin function now correctly ends here
 
   const handleGoogleSignIn = () => {
-    // This will redirect the user to your backend, which then sends them to Google
-    window.location.href = "http://localhost:8000/api/auth/google-signin";
-  };
+  window.location.href = `${BASE_URL}${API_PATHS.AUTH.GOOGLE_SIGNIN}`;
+};
 
   // FIX #3: The return statement is now correctly placed in the component body
   return (

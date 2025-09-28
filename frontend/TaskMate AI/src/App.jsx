@@ -14,6 +14,7 @@ import UserDashboard from './pages/User/UserDashboard';
 import MyTasks from './pages/User/MyTasks';
 import ViewTaskDetails from './pages/User/ViewTaskDetails';
 import MasterTaskView from './pages/Admin/MasterTaskView';
+import GoogleAuthCallback from './pages/Auth/GoogleAuthCallback';
 
 
 // Import functional components
@@ -32,6 +33,7 @@ const App = () => {
           <Route path="/signup-admin" element={<AdminSignUp />} />
           <Route path="/signup-member" element={<MemberSignUp />} />
           <Route path="/start" element={<Root />} />
+          <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
 
           {/* Admin Private Routes */}
           <Route element={<PrivateRoutes allowedRoles={["admin"]} />}>

@@ -6,8 +6,10 @@ import Input from "../../components/inputs/input";
 import { Link, useNavigate } from "react-router-dom";
 import uploadImage from "../../utils/uploadimage";
 import axiosInstance from "../../utils/axiosInstance";
-import { API_PATHS } from "../../utils/apiPaths";
+import { API_PATHS, BASE_URL } from "../../utils/apiPaths";
 import toast from "react-hot-toast";
+import { FcGoogle } from "react-icons/fc";
+
 
 const MemberSignUp = () => {
   const [profilePic, setProfilePic] = useState(null);
@@ -53,6 +55,10 @@ const MemberSignUp = () => {
     }
   };
 
+  const handleGoogleSignIn = () => {
+  window.location.href = `${BASE_URL}${API_PATHS.AUTH.GOOGLE_SIGNIN}`;
+};
+
   return (
     <AuthLayout>
       <div className="lg:w-[100%] h-auto md:h-full mt-10 md:mt-0 flex flex-col justify-center">
@@ -93,6 +99,14 @@ const MemberSignUp = () => {
             </Link>
           </p>
         </form>
+        {/* Google Sign-in Button */}
+        <button 
+          onClick={handleGoogleSignIn} 
+          className="w-full flex items-center justify-center gap-3 card-btn"
+        >
+          <FcGoogle className="text-xl" />
+          Sign in with Google
+        </button>
       </div>
     </AuthLayout>
   );
