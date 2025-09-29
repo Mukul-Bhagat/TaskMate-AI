@@ -4,7 +4,7 @@ import { validateEmail } from "../../utils/helper";
 import ProfilePhotoSelector from "../../components/inputs/ProfilePhotoSelector";
 import Input from "../../components/inputs/input";
 import { Link, useNavigate } from "react-router-dom";
-import uploadImage from "../../utils/uploadimage";
+import uploadImage from "../../utils/uploadImage";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS, BASE_URL } from "../../utils/apiPaths";
 import toast from "react-hot-toast";
