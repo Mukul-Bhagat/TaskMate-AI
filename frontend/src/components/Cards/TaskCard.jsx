@@ -1,7 +1,7 @@
 import React from "react";
 import moment from "moment";
 import { LuPaperclip } from "react-icons/lu";
-import Progress from "../layouts/progress";
+import Progress from "../layouts/Progress";
 import AvatarGroup from "../layouts/AvatarGroup"
 
 const TaskCard = ({
