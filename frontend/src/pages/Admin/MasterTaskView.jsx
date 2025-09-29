@@ -7,7 +7,7 @@ import moment from "moment";
 import toast from "react-hot-toast";
 import Modal from "../../components/Model"; // Corrected path
 import DeleteAlert from "../../components/DeleteAlert"; // Corrected path
-import Progress from "../../components/layouts/progress";
+import Progress from "../../components/layouts/Progress";
 
 const MasterTaskView = () => {
   const { id } = useParams();
