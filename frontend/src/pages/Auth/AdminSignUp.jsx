@@ -5,7 +5,7 @@ import ProfilePhotoSelector from "../../components/inputs/ProfilePhotoSelector";
 import Input from "../../components/inputs/input";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/userContext";
-import uploadImage from "../../utils/uploadimage";
+import uploadImage from "../../utils/uploadImage";
 
 // FIX #1: Import axiosInstance and API_PATHS
 import axiosInstance from "../../utils/axiosInstance";
