@@ -35,10 +35,9 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { failureRedirect: '/login', session: false }),
   (req, res) => {
-    // On success, Passport attaches the user to req.user
     const token = generateToken(req.user.id);
-    // Redirect back to your frontend, passing the token in the URL
-    res.redirect(`http://localhost:5173/auth/google/callback?token=${token}`);
+    // This now correctly redirects to your live Netlify URL in production
+    res.redirect(`${process.env.CLIENT_URL}/auth/google/callback?token=${token}`);
   }
 );
 
