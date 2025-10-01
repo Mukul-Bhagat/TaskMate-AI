@@ -18,6 +18,7 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.get("/profile", protect, getUserProfile);
 router.put("/profile", protect, updateUserProfile);
+router.post('/verify-admin', protect, verifyAdminToken);
 
 // --- IMAGE UPLOAD ROUTE (Public for Sign-Up) ---
 router.post("/upload-image", upload.single("image"), (req, res) => {
