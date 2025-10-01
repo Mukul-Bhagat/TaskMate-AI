@@ -6,11 +6,9 @@ import Input from "../../components/inputs/input";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/userContext";
 import uploadImage from "../../utils/uploadImage";
-
-// FIX #1: Import axiosInstance and API_PATHS
+import { FcGoogle } from "react-icons/fc";
+import { API_PATHS, BASE_URL } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
-import { API_PATHS } from "../../utils/apiPaths";
-
 
 const SignUp = () => {
   const [profilePic, setProfilePic] = useState(null);
@@ -26,7 +24,6 @@ const SignUp = () => {
   const handleSignUp = async (e) => {
     e.preventDefault();
 
-    // Your validation is correct
     if (!fullName) {
       setError("Please Enter full name.");
       return;
@@ -39,34 +36,27 @@ const SignUp = () => {
       setError("Please Enter valid Password.");
       return;
     }
-
     setError("");
 
     try {
       let profileImageUrl = "";
-
-      // Upload image if present
       if (profilePic) {
         const imgUploadRes = await uploadImage(profilePic);
         profileImageUrl = imgUploadRes.imageUrl || "";
       }
 
-      // Send the registration data to the backend
       const response = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
         name: fullName,
         email,
         password,
         adminInviteToken,
-        profileImageUrl, // <-- FIX #2: Include the image URL in the payload
+        profileImageUrl,
       });
 
       const { token, role } = response.data;
-
       if (token) {
         localStorage.setItem("token", token);
         updateUser(response.data);
-
-        // Redirect based on role
         if (role === "admin") {
           navigate("/admin/dashboard");
         } else {
@@ -80,6 +70,11 @@ const SignUp = () => {
         setError("Something went Wrong. Please try again.");
       }
     }
+  };
+
+  // --- MOVED FUNCTION TO THE CORRECT SCOPE ---
+  const handleGoogleSignIn = () => {
+    window.location.href = `${BASE_URL}${API_PATHS.AUTH.GOOGLE_SIGNIN}`;
   };
 
   return (
@@ -117,7 +112,7 @@ const SignUp = () => {
             <Input
               value={adminInviteToken}
               onChange={({ target }) => setAdminInviteToken(target.value)}
-              label="Admin Invite Token"
+              label="Admin Invite Token (Optional)"
               placeholder="6 Digit Code"
               type="text"
             />
@@ -136,6 +131,20 @@ const SignUp = () => {
             </Link>
           </p>
         </form>
+
+        <div className="flex items-center gap-4 my-4">
+          <div className="flex-grow border-t border-slate-200"></div>
+          <span className="text-slate-500 text-xs">OR</span>
+          <div className="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <button 
+          onClick={handleGoogleSignIn} 
+          className="w-full flex items-center justify-center gap-3 card-btn"
+        >
+          <FcGoogle className="text-xl" />
+          Sign up with Google
+        </button>
       </div>
     </AuthLayout>
   );
