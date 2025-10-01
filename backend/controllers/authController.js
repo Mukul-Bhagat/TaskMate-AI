@@ -123,24 +123,28 @@ const googleAuth = (req, res) => {
 };
 
 // @desc    Handles the callback from Google OAuth
+// @desc    Handles the callback from Google OAuth
 const googleAuthCallback = async (req, res) => {
   const { code, state } = req.query;
   if (!code) {
     return res.status(400).send("Error: Google authentication failed.");
   }
-  try {
-    // FIX: Get the userId and taskId back from the 'state' parameter
-    const { userId, taskId } = JSON.parse(state || "{}");
 
+  try {
+    const { userId, taskId } = JSON.parse(state || "{}");
     if (!userId) {
       return res.status(400).send("Error: User identification failed.");
     }
 
-    const oauth2Client = new google.auth.OAuth2(/* ... your credentials ... */);
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CALENDAR_CLIENT_ID,
+      process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+
     const { tokens } = await oauth2Client.getToken(code);
     const { access_token, refresh_token, expiry_date } = tokens;
 
-    // FIX: Find the correct user by their ID and save the tokens
     const user = await User.findById(userId);
     if (user) {
       user.googleAccessToken = access_token;
@@ -150,11 +154,19 @@ const googleAuthCallback = async (req, res) => {
     }
 
     // Redirect the user back to the task page they started from
+    // In production, these should use process.env.CLIENT_URL
     if (taskId) {
-      res.redirect(`http://localhost:5173/user/task-details/${taskId}`);
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/user/task-details/${taskId}`);
     } else {
-      res.redirect(`http://localhost:5173/user/dashboard`);
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/user/dashboard`);
     }
+
+  } catch (error) { // <-- THIS BLOCK WAS MISSING
+    console.error("Error during Google callback:", error);
+    res.status(500).send("Error: Could not process Google callback.");
+  }
+};
+
 // @desc    Verify admin invite token and upgrade user role
 // @route   POST /api/auth/verify-admin
 // @access  Private

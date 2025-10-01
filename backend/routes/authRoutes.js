@@ -11,6 +11,7 @@ const {
   getUserProfile,
   updateUserProfile,
   generateToken,
+  verifyAdminToken,
 } = require("../controllers/authController");
 
 // --- USER AUTH ROUTES ---
