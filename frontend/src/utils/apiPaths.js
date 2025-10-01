@@ -8,6 +8,7 @@ export const API_PATHS = {
     LOGIN: "/api/auth/login", // Authenticate user & return JWT token
     GET_PROFILE: "/api/auth/profile", // Get logged-in user details
     GOOGLE_SIGNIN: "/api/auth/google",
+    VERIFY_ADMIN: "/api/auth/verify-admin",
   },
 
   USERS: {
