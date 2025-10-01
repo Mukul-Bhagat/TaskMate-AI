@@ -15,6 +15,7 @@ import MyTasks from './pages/User/MyTasks';
 import ViewTaskDetails from './pages/User/ViewTaskDetails';
 import MasterTaskView from './pages/Admin/MasterTaskView';
 import GoogleAuthCallback from './pages/Auth/GoogleAuthCallback';
+import VerifyAdminToken from './pages/Auth/VerifyAdminToken';
 
 
 // Import functional components
@@ -42,6 +43,7 @@ const App = () => {
             <Route path="/admin/create-task" element={<CreateTask />} />
             <Route path="/admin/users" element={<ManageUsers />} />
             <Route path="/admin/master-task/:id" element={<MasterTaskView />} />
+            <Route path="/verify-admin-token" element={<VerifyAdminToken />} />
           </Route>
 
           {/* User Private Routes */}
