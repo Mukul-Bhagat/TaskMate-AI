@@ -155,9 +155,42 @@ const googleAuthCallback = async (req, res) => {
     } else {
       res.redirect(`http://localhost:5173/user/dashboard`);
     }
+// @desc    Verify admin invite token and upgrade user role
+// @route   POST /api/auth/verify-admin
+// @access  Private
+const verifyAdminToken = async (req, res) => {
+  try {
+    const { adminInviteToken } = req.body;
+    const userId = req.user.id; // Get user ID from the 'protect' middleware
 
+    // Check if the provided token is correct
+    if (adminInviteToken === process.env.ADMIN_INVITE_TOKEN) {
+      // Find the user and update their role to "admin"
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { role: 'admin' },
+        { new: true } // Return the updated document
+      ).select('-password');
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Generate a new token with the updated role
+      const token = generateToken(user._id);
+
+      // Send back the updated user data and new token
+      res.json({
+        message: 'Admin verification successful!',
+        user,
+        token,
+      });
+    } else {
+      // If token is incorrect
+      return res.status(400).json({ message: 'Invalid Admin Invite Token' });
+    }
   } catch (error) {
-    // ... error handling
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
@@ -169,4 +202,5 @@ module.exports = {
   googleAuth,
   googleAuthCallback,
   generateToken,
+  verifyAdminToken,
 };
