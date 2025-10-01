@@ -14,6 +14,8 @@ const googleApiRoutes = require("./routes/googleApiRoutes");
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Passport Config
 require('./config/passport')(passport);
 
