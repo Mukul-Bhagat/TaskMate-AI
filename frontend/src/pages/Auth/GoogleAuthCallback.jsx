@@ -15,29 +15,32 @@ const GoogleAuthCallback = () => {
       const token = searchParams.get('token');
 
       if (token) {
-        // 1. Save the token to localStorage
         localStorage.setItem('token', token);
-
-        // 2. Fetch the user's profile with the new token
+        
         try {
           const response = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
+          const user = response.data;
           
-          // 3. Update the global user state
-          updateUser(response.data);
+          // Check if the user account was just created (e.g., within the last 60 seconds)
+          const isNewUser = new Date() - new Date(user.createdAt) < 60000;
 
-          // 4. Redirect to the correct dashboard based on role
-          if (response.data.role === 'admin') {
-            navigate('/admin/dashboard');
+          if (isNewUser) {
+            // This is a brand new user, send them to the verification page
+            navigate('/verify-admin-token');
           } else {
-            navigate('/user/dashboard');
+            // This is an existing user, send them to their dashboard
+            updateUser(user);
+            if (user.role === 'admin') {
+              navigate('/admin/dashboard');
+            } else {
+              navigate('/user/dashboard');
+            }
           }
         } catch (error) {
-          console.error('Failed to fetch user profile after Google sign-in', error);
-          navigate('/login'); // On failure, send back to login
+          // ... error handling
+          navigate('/login');
         }
       } else {
-        // No token was found in the URL
-        console.error('Google sign-in failed, no token received.');
         navigate('/login');
       }
     };
@@ -45,12 +48,7 @@ const GoogleAuthCallback = () => {
     handleAuth();
   }, [navigate, searchParams, updateUser]);
 
-  // Render a simple loading indicator while the logic runs
-  return (
-    <div className="w-screen h-screen flex items-center justify-center">
-      <p>Loading, please wait...</p>
-    </div>
-  );
+  return <div>Loading, please wait...</div>;
 };
 
 export default GoogleAuthCallback;
