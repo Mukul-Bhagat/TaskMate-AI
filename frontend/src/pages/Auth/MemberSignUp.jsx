@@ -99,13 +99,21 @@ const MemberSignUp = () => {
             </Link>
           </p>
         </form>
+
+          {/* Separator */}
+          <div className="flex items-center gap-4 my-4">
+          <div className="flex-grow border-t border-slate-200"></div>
+          <span className="text-slate-500 text-xs">OR</span>
+          <div className="flex-grow border-t border-slate-200"></div>
+        </div>
+        
         {/* Google Sign-in Button */}
         <button 
           onClick={handleGoogleSignIn} 
           className="w-full flex items-center justify-center gap-3 card-btn"
         >
           <FcGoogle className="text-xl" />
-          Sign in with Google
+          Sign up with Google
         </button>
       </div>
     </AuthLayout>
