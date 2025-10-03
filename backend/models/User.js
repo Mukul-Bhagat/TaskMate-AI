@@ -9,6 +9,7 @@ const UserSchema = new mongoose.Schema(
       // Make password required only if the user does not have a googleId
       required: function() { return !this.googleId; },
     },
+    googleId: { type: String },
     profileImageUrl: {type: String, default: null},
     role: {type: String, enum: ["admin","member"], default:"member"},//Role-based access
 
