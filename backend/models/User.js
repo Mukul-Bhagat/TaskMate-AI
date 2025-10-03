@@ -5,9 +5,10 @@ const UserSchema = new mongoose.Schema(
     name: {type: String, required: true},
     email: {type: String, required: true, unique:true},
     password: {
-        type: String,
-        required: function() { return !this.googleId; }, // This line is the fix
-        },
+      type: String,
+      // Make password required only if the user does not have a googleId
+      required: function() { return !this.googleId; },
+    },
     profileImageUrl: {type: String, default: null},
     role: {type: String, enum: ["admin","member"], default:"member"},//Role-based access
 
