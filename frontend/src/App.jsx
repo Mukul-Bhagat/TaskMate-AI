@@ -5,7 +5,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Dashboard from './pages/Admin/Dashboard';
 import TaskMateLanding from './pages/Auth/TaskMateLanding';
 import Login from './pages/Auth/Login';
-import SignUp from './pages/Auth/SignUp'; // Use the single, smart SignUp component
+import AdminSignUp from './pages/Auth/AdminSignUp'; // Import AdminSignUp
+import MemberSignUp from './pages/Auth/MemberSignUp'; // Import MemberSignUp
 import CreateTask from './pages/Admin/CreateTask';
 import ManageTasks from './pages/Admin/ManageTasks';
 import ManageUsers from './pages/Admin/ManageUsers';
@@ -30,8 +31,8 @@ const App = () => {
           <Route path="/" element={<TaskMateLanding />} />
           <Route path="/login" element={<Login />} />
           {/* FIX #1: Both sign-up routes now use the same smart 'SignUp' component */}
-          <Route path="/signup-admin" element={<SignUp />} />
-          <Route path="/signup-member" element={<SignUp />} />
+          <Route path="/signup-admin" element={<AdminSignUp />} />
+          <Route path="/signup-member" element={<MemberSignUp />} />
           <Route path="/start" element={<Root />} />
           <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
 
