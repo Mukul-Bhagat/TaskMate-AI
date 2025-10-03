@@ -12,8 +12,6 @@ const router = express.Router();
 router.get("/", protect, adminOnly, getUsers);
 router.get("/:id", protect, getUserById);
 router.post("/invite", protect, adminOnly, inviteUser);
-
-// Add this line to allow admins to delete users
 router.delete("/:id", protect, adminOnly, deleteUser);
 
 module.exports = router;                                                                                                     
