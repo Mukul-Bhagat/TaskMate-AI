@@ -10,20 +10,19 @@ import { FcGoogle } from "react-icons/fc";
 import { API_PATHS, BASE_URL } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
 
-const SignUp = () => {
+const AdminSignUp = () => {
   const [profilePic, setProfilePic] = useState(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [adminInviteToken, setAdminInviteToken] = useState("");
   const [error, setError] = useState(null);
-
   const { updateUser } = useContext(UserContext);
   const navigate = useNavigate();
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-
+    
     if (!fullName) {
       setError("Please Enter full name.");
       return;
@@ -150,4 +149,4 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default AdminSignUp;
