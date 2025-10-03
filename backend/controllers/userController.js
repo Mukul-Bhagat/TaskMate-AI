@@ -66,58 +66,6 @@ const getUserById = async (req, res) => {
   }
 };
 
-// In controllers/userController.js
-
-// ... your other functions (registerUser, loginUser, etc.)
-
-// @desc    Invite a new user (Admin only)
-// @route   POST /api/users/invite
-// @access  Private (Admin)
-const inviteUser = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    // 1. Check if user with this email already exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: "User with this email already exists" });
-    }
-
-    // 2. Generate a temporary random password
-    const temporaryPassword = crypto.randomBytes(8).toString("hex");
-
-    // 3. Hash the temporary password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(temporaryPassword, salt);
-
-    // 4. Create the new user
-    const newUser = await User.create({
-      name: "Invited User", // A placeholder name
-      email,
-      password: hashedPassword,
-      createdBy: req.user.id, // Link to the admin who invited them
-      // You could add an inviteToken and status if your schema supports it
-    });
-
-    // 5. TODO: Send an invitation email
-    // Here, you would use a service like Nodemailer or SendGrid
-    // to send the user an email with their temporary password
-    // and a link to log in.
-    console.log(`
-      INVITATION EMAIL SIMULATION:
-      To: ${email}
-      Subject: You've been invited to TaskMate!
-      Body: Welcome! Your temporary password is: ${temporaryPassword}
-      Please log in and change your password.
-    `);
-
-    res.status(201).json({ message: `Invitation sent successfully to ${email}` });
-
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
 // @desc    Delete a user (Admin only)
 // @route   DELETE /api/users/:id
 // @access  Private (Admin)
@@ -136,6 +84,47 @@ const deleteUser = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// @desc    Invite a new user (Admin only)
+// @route   POST /api/users/invite
+// @access  Private (Admin)
+const inviteUser = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Please provide an email." });
+    }
+
+    // 1. Check if user with this email already exists
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: "A user with this email already exists." });
+    }
+
+    // 2. If user does not exist, create a new placeholder user
+    // We create a temporary name and a disabled/random password.
+    // The user will be prompted to change their password on first login.
+    const name = email.split('@')[0]; // Use the part before the @ as a temporary name
+    const tempPassword = Math.random().toString(36).slice(-8); // Generate a random password
+
+    const user = await User.create({
+      name,
+      email,
+      password: tempPassword, // A password is required, so we create a temporary one
+      role: 'member',
+    });
+
+    // In a full application, you would send an email to the user here.
+    // For now, we'll just confirm the creation.
+    
+    res.status(201).json({ message: `User invited and account created for ${email}.` });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 module.exports = {
   getUsers,
