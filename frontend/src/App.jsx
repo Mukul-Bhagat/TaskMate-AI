@@ -1,12 +1,11 @@
 import React, { useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Import all page components
 import Dashboard from './pages/Admin/Dashboard';
 import TaskMateLanding from './pages/Auth/TaskMateLanding';
 import Login from './pages/Auth/Login';
-import AdminSignUp from './pages/Auth/AdminSignUp';
-import MemberSignUp from './pages/Auth/MemberSignUp';
+import SignUp from './pages/Auth/SignUp'; // Use the single, smart SignUp component
 import CreateTask from './pages/Admin/CreateTask';
 import ManageTasks from './pages/Admin/ManageTasks';
 import ManageUsers from './pages/Admin/ManageUsers';
@@ -16,7 +15,6 @@ import ViewTaskDetails from './pages/User/ViewTaskDetails';
 import MasterTaskView from './pages/Admin/MasterTaskView';
 import GoogleAuthCallback from './pages/Auth/GoogleAuthCallback';
 import VerifyAdminToken from './pages/Auth/VerifyAdminToken';
-
 
 // Import functional components
 import PrivateRoutes from './routes/PrivateRoutes';
@@ -31,8 +29,9 @@ const App = () => {
           {/* Public Routes */}
           <Route path="/" element={<TaskMateLanding />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup-admin" element={<AdminSignUp />} />
-          <Route path="/signup-member" element={<MemberSignUp />} />
+          {/* FIX #1: Both sign-up routes now use the same smart 'SignUp' component */}
+          <Route path="/signup-admin" element={<SignUp />} />
+          <Route path="/signup-member" element={<SignUp />} />
           <Route path="/start" element={<Root />} />
           <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
 
@@ -43,17 +42,21 @@ const App = () => {
             <Route path="/admin/create-task" element={<CreateTask />} />
             <Route path="/admin/users" element={<ManageUsers />} />
             <Route path="/admin/master-task/:id" element={<MasterTaskView />} />
-            <Route path="/verify-admin-token" element={<VerifyAdminToken />} />
           </Route>
 
           {/* User Private Routes */}
-          <Route element={<PrivateRoutes allowedRoles={["user"]} />}>
+          {/* FIX #2: Changed allowed role from "user" to "member" */}
+          <Route element={<PrivateRoutes allowedRoles={["member"]} />}>
             <Route path="/user/dashboard" element={<UserDashboard />} />
-            {/* FIX: Corrected the path to match what you are visiting */}
             <Route path="/user/tasks" element={<MyTasks />} />
             <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
           </Route>
           
+          {/* FIX #3: Moved VerifyAdminToken to a route accessible by new members */}
+          <Route element={<PrivateRoutes allowedRoles={["member", "admin"]} />}>
+             <Route path="/verify-admin-token" element={<VerifyAdminToken />} />
+          </Route>
+
         </Routes>
       </Router>
       <Toaster />
