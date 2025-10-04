@@ -2,6 +2,8 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { google } = require("googleapis");
+const crypto = require('crypto'); // Import crypto
+const nodemailer = require('nodemailer'); // Import nodemailer
 
 // Generate JWT Token
 const generateToken = (userId) => {
@@ -16,21 +18,41 @@ const registerUser = async (req, res) => {
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
-    let role = "member";
-    if (adminInviteToken && adminInviteToken.trim() === process.env.ADMIN_INVITE_TOKEN) {
-      role = "admin";
-    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    const user = await User.create({ name, email, password: hashedPassword, profileImageUrl, role });
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profileImageUrl: user.profileImageUrl,
-      token: generateToken(user._id),
+
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      profileImageUrl,
+      role: (adminInviteToken === process.env.ADMIN_INVITE_TOKEN) ? 'admin' : 'member',
+      verificationToken: crypto.randomBytes(32).toString('hex'),
     });
+
+    await user.save();
+
+    // --- Send Verification Email ---
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const verificationLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/verify-email?token=${user.verificationToken}`;
+
+    await transporter.sendMail({
+      from: `"TaskMate" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: 'Verify Your Email Address for TaskMate',
+      html: `<p>Hi ${user.name},</p><p>Please click the link below to verify your email address:</p><a href="${verificationLink}">Verify Email</a>`,
+    });
+
+    res.status(201).json({ message: "Registration successful! Please check your email to verify your account." });
+
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
@@ -41,13 +63,22 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    // --- ADD THIS VERIFICATION CHECK ---
+    if (!user.isVerified) {
+      return res.status(401).json({ message: "Please verify your email before logging in." });
+    }
+    // --- END OF CHECK ---
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
+    
     res.json({
       _id: user._id,
       name: user.name,
@@ -206,6 +237,27 @@ const verifyAdminToken = async (req, res) => {
   }
 };
 
+// Add this new function to authController.js
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+    const user = await User.findOne({ verificationToken: token });
+
+    if (!user) {
+      return res.status(400).send('<h1>Error</h1><p>Invalid or expired verification link.</p>');
+    }
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    // Redirect to the login page on your frontend
+    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login`);
+  } catch (error) {
+    res.status(500).send('<h1>Error</h1><p>An error occurred while verifying your email.</p>');
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -215,4 +267,5 @@ module.exports = {
   googleAuthCallback,
   generateToken,
   verifyAdminToken,
+  verifyEmail,
 };

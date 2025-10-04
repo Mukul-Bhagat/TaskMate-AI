@@ -12,6 +12,7 @@ const {
   updateUserProfile,
   generateToken,
   verifyAdminToken,
+  verifyEmail,
 } = require("../controllers/authController");
 
 // --- USER AUTH ROUTES ---
@@ -20,6 +21,7 @@ router.post("/login", loginUser);
 router.get("/profile", protect, getUserProfile);
 router.put("/profile", protect, updateUserProfile);
 router.post('/verify-admin', protect, verifyAdminToken);
+router.get('/verify-email', verifyEmail);
 
 // --- IMAGE UPLOAD ROUTE (Public for Sign-Up) ---
 router.post("/upload-image", upload.single("image"), (req, res) => {

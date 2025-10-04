@@ -23,9 +23,8 @@ export default function TaskMateLanding() {
         <header className="sticky top-0 z-50 bg-white shadow-sm">
           <div className="container max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
-              <Link to="/" className="flex items-center gap-3">
-                
-                <h2 className="text-gray-900 text-xl font-bold">TaskMate</h2>
+              <Link className="text-gray-900 text-xl" to="/">
+                <span className="font-bold">Task</span><span className="font-normal">Mate</span>
               </Link>
               <div className="flex items-center gap-4">
                 <Link
