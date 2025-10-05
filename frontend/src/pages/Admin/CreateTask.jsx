@@ -10,6 +10,7 @@ import { LuTrash2 } from "react-icons/lu";
 import Select from "react-select"; // Use react-select
 import Modal from "../../components/Model";
 import DeleteAlert from "../../components/DeleteAlert";
+import Input from "../../components/inputs/Input";
 
 const CreateTask = () => {
   const location = useLocation();
