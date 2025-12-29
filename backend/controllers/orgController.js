@@ -180,10 +180,39 @@ const switchOrg = async (req, res) => {
     }
 }
 
+// @desc    Get all members of an organization
+// @route   GET /api/orgs/:orgId/members
+// @access  Private
+const getOrgMembers = async (req, res) => {
+    try {
+        const { orgId } = req.params;
+
+        // Verify access (handled by middleware usually, but good to be safe)
+        const membership = req.user.memberships.find(
+            (m) => m.organizationId.toString() === orgId
+        );
+
+        if (!membership) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Find users who have a membership in this org
+        // We look for users where 'memberships.organizationId' matches orgId
+        const users = await User.find({
+            "memberships.organizationId": orgId
+        }).select("_id name email profileImageUrl");
+
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
 module.exports = {
     createOrg,
     getInviteLink,
     requestToJoin,
     approveRequest,
-    switchOrg
+    switchOrg,
+    getOrgMembers
 };

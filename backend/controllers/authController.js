@@ -13,7 +13,7 @@ const generateToken = (userId) => {
 // @desc    Register a new user
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, profileImageUrl, adminInviteToken } = req.body;
+    const { name, email, password, profileImageUrl } = req.body;
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
@@ -27,31 +27,20 @@ const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       profileImageUrl,
-      role: (adminInviteToken === process.env.ADMIN_INVITE_TOKEN) ? 'admin' : 'member',
-      verificationToken: crypto.randomBytes(32).toString('hex'),
+      // No default role/memberships. They are "org-less" until they join one.
     });
 
     await user.save();
 
-    // --- Send Verification Email ---
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      memberships: user.memberships,
+      profileImageUrl: user.profileImageUrl,
+      token: generateToken(user._id),
+      message: "Registration successful"
     });
-
-    const verificationLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/verify-email?token=${user.verificationToken}`;
-
-    await transporter.sendMail({
-      from: `"TaskMate" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: 'Verify Your Email Address for TaskMate',
-      html: `<p>Hi ${user.name},</p><p>Please click the link below to verify your email address:</p><a href="${verificationLink}">Verify Email</a>`,
-    });
-
-    res.status(201).json({ message: "Registration successful! Please check your email to verify your account." });
 
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -62,28 +51,22 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).populate('memberships.organizationId');
 
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // --- ADD THIS VERIFICATION CHECK ---
-    if (!user.isVerified) {
-      return res.status(401).json({ message: "Please verify your email before logging in." });
-    }
-    // --- END OF CHECK ---
-
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
-    
+
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role,
+      memberships: user.memberships,
       profileImageUrl: user.profileImageUrl,
       token: generateToken(user._id),
     });
