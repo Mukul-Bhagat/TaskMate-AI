@@ -17,6 +17,14 @@ axiosInstance.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+
+    // 2. Get Active Organization ID
+    const activeOrgId = localStorage.getItem('activeOrgId');
+    if (activeOrgId) {
+      // This is the key header your backend 'requireOrgAccess' middleware looks for
+      config.headers['x-org-id'] = activeOrgId;
+    }
+
     return config;
   },
   (error) => {

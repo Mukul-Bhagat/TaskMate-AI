@@ -1,19 +1,54 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo } from "react";
-import axiosInstance from "/src/utils/axiosInstance";
-import { API_PATHS } from "/src/utils/apiPaths";
+import axiosInstance from "../utils/axiosInstance";
+import { API_PATHS } from "../utils/apiPaths";
 
 export const UserContext = createContext();
 
 const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [activeOrg, setActiveOrg] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refetchTrigger, setRefetchTrigger] = useState(false); // New state to trigger refetch
+  const [refetchTrigger, setRefetchTrigger] = useState(false);
 
-  // New function to allow other components to trigger a refetch
   const refetchUser = useCallback(() => {
-    setLoading(true); // Set loading to true to show loading state
+    setLoading(true);
     setRefetchTrigger(prev => !prev);
   }, []);
+
+  const updateUser = useCallback((userData) => {
+    setUser(userData);
+    if (userData && userData.token) {
+      localStorage.setItem("token", userData.token);
+    }
+  }, []);
+
+  const clearUser = useCallback(() => {
+    setUser(null);
+    setActiveOrg(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("activeOrgId");
+  }, []);
+
+  // Switch Organization Logic
+  const switchOrganization = useCallback((orgId) => {
+    if (!user || !user.memberships) return;
+
+    const targetOrg = user.memberships.find(m => m.organizationId._id === orgId || m.organizationId === orgId);
+
+    if (targetOrg) {
+      // Backend stores organizationId as an object (populated) or string. Handle both.
+      const idToSave = typeof targetOrg.organizationId === 'object'
+        ? targetOrg.organizationId._id
+        : targetOrg.organizationId;
+
+      setActiveOrg(targetOrg);
+      localStorage.setItem('activeOrgId', idToSave);
+
+      // Optional: Trigger a window reload or specific refetch to update all data views
+      // window.location.reload(); 
+      // OR simply rely on the updated axios interceptor for subsequent calls
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -24,40 +59,53 @@ const UserProvider = ({ children }) => {
       }
       try {
         const response = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
-        setUser(response.data);
+        const userData = response.data;
+        setUser(userData);
+
+        // -- Active Org Logic --
+        if (userData.memberships && userData.memberships.length > 0) {
+          const storedOrgId = localStorage.getItem('activeOrgId');
+
+          let initialOrg = null;
+          if (storedOrgId) {
+            initialOrg = userData.memberships.find(m =>
+              (m.organizationId._id || m.organizationId) === storedOrgId
+            );
+          }
+
+          // Default to first org if stored one is invalid/missing
+          if (!initialOrg) {
+            initialOrg = userData.memberships[0];
+            const idToSave = initialOrg.organizationId._id || initialOrg.organizationId;
+            localStorage.setItem('activeOrgId', idToSave);
+          }
+
+          setActiveOrg(initialOrg);
+        } else {
+          setActiveOrg(null);
+        }
+
       } catch (error) {
         console.error("User not authenticated", error);
-        clearUser(); // Clear user data if token is invalid
+        clearUser();
       } finally {
         setLoading(false);
       }
     };
     fetchUser();
-  }, [refetchTrigger]); // useEffect now depends on the trigger state
+  }, [refetchTrigger, clearUser]);
 
-  const updateUser = useCallback((userData) => {
-    setUser(userData);
-    if (userData && userData.token) {
-        localStorage.setItem("token", userData.token);
-    }
-    setLoading(false);
-  }, []);
-
-  const clearUser = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem("token");
-  }, []);
-
-  // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(
     () => ({
       user,
+      activeOrg,
       loading,
       updateUser,
       clearUser,
-      refetchUser, // Expose the new function to components
+      refetchUser,
+      switchOrganization
     }),
-    [user, loading, updateUser, clearUser, refetchUser]
+    [user, activeOrg, loading, updateUser, clearUser, refetchUser, switchOrganization]
   );
 
   return (
@@ -68,4 +116,3 @@ const UserProvider = ({ children }) => {
 };
 
 export default UserProvider;
-

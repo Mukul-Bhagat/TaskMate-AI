@@ -1,6 +1,6 @@
 // utils/apiPaths.js
 
-export const BASE_URL = "https://taskmate-fokd.onrender.com";
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://taskmate-fokd.onrender.com";
 
 export const API_PATHS = {
   AUTH: {

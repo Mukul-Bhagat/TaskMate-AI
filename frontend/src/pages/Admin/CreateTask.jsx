@@ -36,6 +36,8 @@ const CreateTask = () => {
   const [loading, setLoading] = useState(false);
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
   const [assignmentType, setAssignmentType] = useState("group");// 'group' or 'individual'
+  const [teamMemberOptions, setTeamMemberOptions] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   // Generic handler to update form fields
   const handleValueChange = (key, value) => {

@@ -30,14 +30,48 @@ const protect = async (req, res, next) => {
   }
 };
 
-// Middleware for Admin-only access
+// Middleware for Admin-only access (Global or Context aware)
 const adminOnly = (req, res, next) => {
-  // The 'protect' middleware must run first to populate req.user
-  if (req.user && req.user.role === "admin") {
-    next(); // User is an admin, proceed
-  } else {
+  // Check global admin role if it exists (legacy) or specific org admin
+  if (req.user && (req.user.role === "admin" || req.user.isAdmin)) {
+    next();
+  }
+  // Context-aware admin check (if x-org-id provided)
+  else if (req.headers['x-org-id']) {
+    const orgId = req.headers['x-org-id'];
+    const isAdmin = req.user.memberships?.find(
+      (m) => m.organizationId.toString() === orgId && m.role === 'admin'
+    );
+    if (isAdmin) {
+      next();
+    } else {
+      res.status(403).json({ message: "Access denied, admin only for this organization" });
+    }
+  }
+  else {
     res.status(403).json({ message: "Access denied, admin only" });
   }
 };
 
-module.exports = { protect, adminOnly };
+// Middleware to check if user belongs to the organization specified in headers
+const requireOrgAccess = (req, res, next) => {
+  const orgId = req.headers['x-org-id'];
+
+  if (!orgId) {
+    return res.status(400).json({ message: "Organization ID missing in headers (x-org-id)" });
+  }
+
+  const hasAccess = req.user.memberships.find(
+    (m) => m.organizationId.toString() === orgId
+  );
+
+  if (!hasAccess) {
+    return res.status(403).json({ message: "Access denied: You are not a member of this organization" });
+  }
+
+  // Attach current org role to request for easier access in controllers
+  req.orgRole = hasAccess.role;
+  next();
+};
+
+module.exports = { protect, adminOnly, requireOrgAccess };

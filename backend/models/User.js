@@ -1,17 +1,23 @@
 const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema(
-{
-    name: {type: String, required: true},
-    email: {type: String, required: true, unique:true},
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
     password: {
       type: String,
       // Make password required only if the user does not have a googleId
-      required: function() { return !this.googleId; },
+      required: function () { return !this.googleId; },
     },
     googleId: { type: String },
-    profileImageUrl: {type: String, default: null},
-    role: {type: String, enum: ["admin","member"], default:"member"},//Role-based access
+    profileImageUrl: { type: String, default: null },
+    // memberships replaces the single 'role'
+    memberships: [
+      {
+        organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization" },
+        role: { type: String, enum: ["admin", "member"], default: "member" },
+      },
+    ],
 
     googleAccessToken: { type: String },
     googleRefreshToken: { type: String },
@@ -19,8 +25,8 @@ const UserSchema = new mongoose.Schema(
 
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
-},
-    {timestamps: true}
+  },
+  { timestamps: true }
 );
-module.exports = mongoose.model("User",UserSchema);
+module.exports = mongoose.model("User", UserSchema);
 

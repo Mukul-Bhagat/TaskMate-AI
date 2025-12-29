@@ -22,9 +22,19 @@ require('./config/passport')(passport);
 // Middleware to handle CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*",
-    method: ["GET", "POST", "PUT", "DELETE"],
+    origin: (origin, callback) => {
+      const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",");
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 
@@ -47,6 +57,7 @@ app.use("/api/users", userRoutes); // Keep only one
 app.use("/api/tasks", taskRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/google", googleApiRoutes);
+app.use("/api/orgs", require("./routes/orgRoutes"));
 
 // Start Server
 const PORT = process.env.PORT || 8000; // I see PORT=8000 in your .env, so the server will run there
