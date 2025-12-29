@@ -1,26 +1,27 @@
-
 import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import SideMenu from './SideMenu';
 import Topbar from '../Topbar';
 
-const DashboardLayout = ({ children, activeMenu }) => {
+const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-[#0f172a] transition-colors duration-300 overflow-hidden">
+    // Main Container
+    <div className="flex h-screen bg-gray-50 dark:bg-[#0f172a] overflow-hidden transition-colors duration-300">
 
-      {/* Sidebar (Passes state down) */}
+      {/* 1. LEFT: Sidebar */}
       <SideMenu isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full relative w-full">
+      {/* 2. RIGHT: Content Area */}
+      <div className="flex-1 flex flex-col h-full relative w-full overflow-hidden">
 
-        {/* Topbar needs to know how to open sidebar */}
+        {/* Top Header */}
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
 
-        {/* Scrollable Page Content */}
+        {/* Page Content (Scrollable) */}
         <div className="flex-1 overflow-y-auto p-0 scroll-smooth">
-          {children}
+          <Outlet />
         </div>
 
       </div>

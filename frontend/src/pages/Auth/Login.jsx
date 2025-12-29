@@ -1,133 +1,167 @@
-import React, { useContext, useState } from "react";
-import AuthLayout from "../../components/layouts/AuthLayout";
-import { useNavigate, Link } from "react-router-dom";
-import Input from "../../components/inputs/input";
-import { validateEmail } from "../../utils/helper";
-import axiosInstance from "../../utils/axiosInstance";
-import { API_PATHS, BASE_URL } from "../../utils/apiPaths"; // <-- FIX #1: Added missing import
-import { UserContext } from "../../context/userContext";
-import { FcGoogle } from "react-icons/fc";
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import axiosInstance from '../../utils/axiosInstance';
+import { API_PATHS } from '../../utils/apiPaths';
+import { UserContext } from '../../context/userContext';
+import { FaEnvelope, FaLock, FaExclamationCircle, FaGoogle } from 'react-icons/fa';
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
-
-  const { updateUser } = useContext(UserContext)
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { updateUser } = useContext(UserContext);
 
-  // Handle Login Form Submit
-  const handleLogin = async (e) => {
+  const { email, password } = formData;
+
+  const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const onSubmit = async e => {
     e.preventDefault();
-
-    if (!validateEmail(email)) {
-      setError("Please Enter valid Email adress.");
-      return;
-    }
-
-    if (!password) {
-      setError("Please Enter valid Password.");
-      return;
-    }
-
-    setError("");
-
-    // FIX #2: The API call logic is now correctly placed INSIDE the handleLogin function
+    setLoading(true);
+    setError('');
     try {
-      const response = await axiosInstance.post(API_PATHS.AUTH.LOGIN, {
-        email,
-        password,
-      });
+      // 1. Login API Call
+      const res = await axiosInstance.post(API_PATHS.AUTH.LOGIN, formData);
 
-      const { token, role, requiresPasswordChange } = response.data;
+      // 2. Use Context to save user data
+      const { token, ...userData } = res.data;
+      // Handle data structure if user is nested or flat
+      const userObj = userData.user || userData;
 
-      if (token) {
-        localStorage.setItem("token", token);
-        updateUser(response.data)
+      localStorage.setItem('token', token);
+      // updateUser expects the user object
+      updateUser({ ...userObj, token });
 
-        if (requiresPasswordChange) {
-          navigate("/change-password");
-          return;
-        }
+      // 3. Decide redirection
+      const role = userObj.role;
+      // Check org existence (adapt based on API response structure)
+      const hasOrg = userObj.organizationId || (userObj.memberships && userObj.memberships.length > 0);
 
-        // Redirect based on role
-        if (role === "admin") {
-          navigate("/admin/dashboard");
+      if (role === 'admin') {
+        // If admin has no org yet, send to onboarding
+        if (!hasOrg) {
+          navigate('/onboarding');
         } else {
-          navigate("/user/dashboard");
+          // If admin has org, send to dashboard
+          const origin = location.state?.from?.pathname || '/dashboard';
+          navigate(origin);
         }
-      }
-    } catch (error) {
-      if (error.response && error.response.data.message) {
-        setError(error.response.data.message);
       } else {
-        setError("Something went Wrong. Please try again.");
+        // Regular users go to their task list
+        navigate('/my-tasks');
       }
-    }
-  }; // <-- The handleLogin function now correctly ends here
 
-  const handleGoogleSignIn = () => {
-    window.location.href = `${BASE_URL}${API_PATHS.AUTH.GOOGLE_SIGNIN}`;
+    } catch (err) {
+      console.error(err.response?.data);
+      setError(err.response?.data?.msg || err.response?.data?.message || 'Login failed. Please check credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // FIX #3: The return statement is now correctly placed in the component body
   return (
-    <AuthLayout>
-      <div className="lg:w-[70%] h-3/4 md:h-full flex flex-col justify-center">
-        <h3 className="text-xl font-semibold text-black">Welcome Back</h3>
-        <p className="text-xs text-slate-700 mt-[5px] mb-6">
-          Please enter your details to log in
-        </p>
+    // DARK RED GRADIENT BACKGROUND
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-red-800 to-red-950 p-4">
 
-        <form onSubmit={handleLogin}>
-          <Input
-            value={email}
-            onChange={({ target }) => setEmail(target.value)}
-            label="Email Address"
-            placeholder="atharva@example.com"
-            type="text"
+      {/* CENTERED CARD */}
+      <div className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md space-y-8 animate-fade-in-up relative overflow-hidden">
+
+        {/* Optional Top Accent */}
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-600 to-red-800"></div>
+
+        {/* LARGE CENTERED LOGO */}
+        <div className="flex justify-center">
+          <img
+            src="/blacklogo.png"
+            alt="Logo"
+            className="h-24 w-auto object-contain drop-shadow-sm transition-transform hover:scale-105"
           />
-
-          <Input
-            value={password}
-            onChange={({ target }) => setPassword(target.value)}
-            label="Password"
-            placeholder="Min 8 char"
-            type="password"
-          />
-
-          {error && <p className="text-red-500 text-xs pb-2.5">{error}</p>}
-
-          <button type="submit" className="btn-primary">
-            LOGIN
-          </button>
-
-          <p className="text-[13px] text-slate-800 mt-3">
-            Don't have an account?{" "}
-            <Link className="font-medium text-primary underline" to="/signup">
-              SignUp
-            </Link>
-          </p>
-        </form>
-
-        {/* Separator */}
-        <div className="flex items-center gap-4 my-4">
-          <div className="flex-grow border-t border-slate-200"></div>
-          <span className="text-slate-500 text-xs">OR</span>
-          <div className="flex-grow border-t border-slate-200"></div>
         </div>
 
-        {/* Google Sign-in Button */}
-        <button
-          onClick={handleGoogleSignIn}
-          className="w-full flex items-center justify-center gap-3 card-btn"
-        >
-          <FcGoogle className="text-xl" />
-          Sign in with Google
-        </button>
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900">Welcome Back</h2>
+          <p className="mt-2 text-sm text-gray-500">Sign in to access your workspace</p>
+        </div>
 
+        {/* ERROR ALERT */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded-md flex items-center">
+            <FaExclamationCircle className="text-red-600 mr-3" />
+            <p className="text-sm text-red-700 font-medium">{error}</p>
+          </div>
+        )}
+
+        <form className="space-y-6" onSubmit={onSubmit}>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Email Address</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaEnvelope className="text-gray-400" />
+              </div>
+              <input
+                type="email"
+                name="email"
+                value={email}
+                onChange={onChange}
+                required
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-150 ease-in-out sm:text-sm"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2 ml-1">
+              <label className="block text-sm font-bold text-gray-700">Password</label>
+              <Link to="/forgot-password" className="text-sm font-semibold text-red-600 hover:text-red-800 transition">
+                Forgot password?
+              </Link>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaLock className="text-gray-400" />
+              </div>
+              <input
+                type="password"
+                name="password"
+                value={password}
+                onChange={onChange}
+                required
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-150 ease-in-out sm:text-sm"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-gradient-to-r from-red-700 to-red-900 hover:from-red-800 hover:to-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 transition-all transform hover:scale-[1.02] disabled:opacity-70"
+          >
+            {loading ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Signing in...
+              </span>
+            ) : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link to="/register" className="font-bold text-red-700 hover:text-red-900 transition">
+              Create an account
+            </Link>
+          </p>
+        </div>
       </div>
-    </AuthLayout>
+    </div>
   );
 };
 

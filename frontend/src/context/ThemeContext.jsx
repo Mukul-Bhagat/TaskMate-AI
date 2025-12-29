@@ -3,27 +3,24 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    // 1. Initialize State correctly parsing JSON
     const [darkMode, setDarkMode] = useState(() => {
+        // 1. Strict Check: Only enable dark mode if explicitly saved as 'true'
         const saved = localStorage.getItem('darkMode');
-        return saved !== null ? JSON.parse(saved) : false; // Default to false (Light Mode)
+        return saved === 'true'; // Defaults to false (Light Mode) if null
     });
 
     useEffect(() => {
-        // 2. Apply Class to HTML element
         const root = window.document.documentElement;
+        // 2. Force apply the class based on state
         if (darkMode) {
             root.classList.add('dark');
         } else {
             root.classList.remove('dark');
         }
-        // 3. Save as boolean string
-        localStorage.setItem('darkMode', JSON.stringify(darkMode));
+        localStorage.setItem('darkMode', darkMode);
     }, [darkMode]);
 
-    const toggleTheme = () => {
-        setDarkMode(prev => !prev);
-    };
+    const toggleTheme = () => setDarkMode(!darkMode);
 
     return (
         <ThemeContext.Provider value={{ darkMode, toggleTheme }}>

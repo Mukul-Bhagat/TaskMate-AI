@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
@@ -54,41 +53,39 @@ const Analytics = () => {
     }, []);
 
     return (
-        <DashboardLayout activeMenu="Analytics">
-            <div className="my-5">
-                <h2 className="text-xl md:text-2xl font-medium mb-6">Perfomance Analytics</h2>
+        <div className="p-8 bg-[#F8F9FA] dark:bg-[#0f172a] min-h-full font-sans transition-colors duration-300">
+            <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-800 dark:text-white">Performance Analytics</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4 md:my-6">
-                    {/* Pie Chart */}
-                    <div>
-                        <div className="card">
-                            <div className="flex items-center justify-between">
-                                <h5 className="font-medium">Task Distribution</h5>
-                            </div>
-
-                            <CustomPieChart
-                                data={pieChartData}
-                                label="Total Tasks"
-                                colors={COLORS}
-                            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4 md:my-6">
+                {/* Pie Chart */}
+                <div>
+                    <div className="bg-white dark:bg-[#1e293b] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <h5 className="font-medium text-gray-800 dark:text-white">Task Distribution</h5>
                         </div>
+
+                        <CustomPieChart
+                            data={pieChartData}
+                            label="Total Tasks"
+                            colors={COLORS}
+                        />
                     </div>
+                </div>
 
-                    {/* Bar Chart */}
-                    <div>
-                        <div className="card">
-                            <div className="flex items-center justify-between">
-                                <h5 className="font-medium">Task Priority Level</h5>
-                            </div>
-
-                            <CustomBarChart
-                                data={barChartData}
-                            />
+                {/* Bar Chart */}
+                <div>
+                    <div className="bg-white dark:bg-[#1e293b] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <h5 className="font-medium text-gray-800 dark:text-white">Task Priority Level</h5>
                         </div>
+
+                        <CustomBarChart
+                            data={barChartData}
+                        />
                     </div>
                 </div>
             </div>
-        </DashboardLayout>
+        </div>
     );
 };
 
