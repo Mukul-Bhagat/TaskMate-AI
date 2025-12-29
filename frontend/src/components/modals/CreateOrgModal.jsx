@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../Modal'; // Assuming Modal is exported as 'Modal' (or default) from ../Model.jsx
 import axiosInstance from '../../utils/axiosInstance';
 import { UserContext } from '../../context/userContext';
@@ -7,7 +8,8 @@ import toast from 'react-hot-toast';
 const CreateOrgModal = ({ isOpen, onClose }) => {
     const [name, setName] = useState("");
     const [loading, setLoading] = useState(false);
-    const { refetchUser, switchOrganization } = useContext(UserContext);
+    const { refetchUser, setUser } = useContext(UserContext); // Ensure setUser is available or use refetch
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -15,23 +17,24 @@ const CreateOrgModal = ({ isOpen, onClose }) => {
 
         setLoading(true);
         try {
-            const response = await axiosInstance.post('/api/orgs/create', { name });
-            const newOrg = response.data;
+            // Updated to match backend "Handshake"
+            const response = await axiosInstance.post('/api/orgs', { name });
+            const { token, user: updatedUser } = response.data;
 
-            toast.success("Organization Created!");
+            // 1. Update Token
+            localStorage.setItem('token', token);
 
-            // Refresh user profile to get the new membership
-            await refetchUser();
-            // Note: refetchUser is async behavior but might not be awaitable depending on implementation. 
-            // Ideally we wait, but simpler flow:
+            // 2. Update Context
+            // Update axios instance default header if needed (though it reads from localStorage usually)
+            // setUser(updatedUser); // If context exposes this
+            await refetchUser(); // Safest bet to resync everything
 
-            // Force switch (might need a slight delay or optimistic update if refetch is slow)
-            // For now, let's just close and let the user see it in the sidebar or rely on refresh.
-            // But better:
-            // switchOrganization(newOrg._id); 
-
+            toast.success("Workspace Ready!");
             onClose();
-            setName("");
+
+            // 3. Redirect
+            navigate('/dashboard');
+
         } catch (error) {
             console.error(error);
             toast.error(error.response?.data?.message || "Failed to create organization");

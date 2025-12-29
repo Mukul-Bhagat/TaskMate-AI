@@ -4,29 +4,67 @@ const User = require("../models/User");
 // @desc    Create a new organization
 // @route   POST /api/orgs
 // @access  Private
+const jwt = require('jsonwebtoken');
+
+// @desc    Create a new organization
+// @route   POST /api/orgs
+// @access  Private
 const createOrg = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name } = req.body; // Expecting { name: "My Org", address, phone }
 
-        // Create the organization
+        // 1. Create the Organization
         const org = new Organization({
             name,
             owner: req.user.id,
+            // address, phone - if schema supports it, add here.
         });
         const savedOrg = await org.save();
 
-        // Add the creator as an Admin to the organization's memberships in their User profile
-        await User.findByIdAndUpdate(req.user.id, {
-            $push: {
-                memberships: {
-                    organizationId: savedOrg._id,
-                    role: "admin",
+        // 2. Update the User: Add Admin membership
+        // This pushes to the existing array, or creates it if empty
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id,
+            {
+                $push: {
+                    memberships: {
+                        organizationId: savedOrg._id,
+                        role: "admin",
+                    },
                 },
             },
-        });
+            { new: true } // Return updated doc
+        ).select('-password');
 
-        res.status(201).json(savedOrg);
+        // 3. GENERATE NEW TOKEN (Crucial Step!)
+        // We need a fresh token that acts as if the user just logged in with this new Org context
+        const payload = {
+            user: {
+                id: updatedUser.id,
+                // We default to the new org as active context
+                organizationId: savedOrg._id,
+                role: 'admin'
+            }
+        };
+
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: '5d' },
+            (err, token) => {
+                if (err) throw err;
+
+                // Return everything needed for the frontend "Handshake"
+                res.status(201).json({
+                    token,
+                    organization: savedOrg,
+                    user: updatedUser
+                });
+            }
+        );
+
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: "Server Error", error: error.message });
     }
 };

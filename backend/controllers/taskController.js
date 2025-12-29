@@ -113,7 +113,7 @@ const getTaskById = async (req, res) => {
     const task = await Task.findById(req.params.id).populate(
       "assignedTo",
       "name email profileImageUrl"
-    );
+    ).populate("todoChecklist.completedBy", "name profileImageUrl");
 
     if (!task) return res.status(404).json({ message: "Task not found" });
 
@@ -132,60 +132,64 @@ const getTaskById = async (req, res) => {
 
 const createTask = async (req, res) => {
   try {
-    const {
-      title, description, priority, dueDate, assignedTo,
-      attachments, todoChecklist, assignmentType,
-    } = req.body;
+    const { title, description, assignedTo, priority, dueDate, todoChecklist, attachments } = req.body;
 
-    if (!Array.isArray(assignedTo) || assignedTo.length === 0) {
-      return res.status(400).json({ message: "Task must be assigned to at least one user." });
-    }
-
+    // 1. Get the current logged-in user's details
+    const creatorId = req.user._id;
     const organizationId = req.headers['x-org-id'];
+
     if (!organizationId) {
-      return res.status(400).json({ message: "Organization ID is required" });
+      return res.status(400).json({ message: "Organization Context Missing" });
     }
 
-    if (assignmentType === "individual") {
-      // 1. Create the main "master" task (not assigned to anyone)
-      const masterTask = await Task.create({
-        title, description, priority, dueDate, attachments, todoChecklist,
-        assignmentType: "individual",
-        createdBy: req.user._id,
-        organizationId,
-        assignedTo: [], // Master task is a template, not assigned
-      });
+    // 2. Security Check: Validate 'assignedTo' users
+    let finalAssignees = assignedTo;
 
-      // 2. Create a separate "child" task for each assigned user
-      const childTasks = await Promise.all(
-        assignedTo.map(async (userId) => {
-          return Task.create({
-            title, description, priority, dueDate, attachments, todoChecklist,
-            assignedTo: [userId], // Assign to only this one user
-            createdBy: req.user._id,
-            organizationId,
-            parentTask: masterTask._id, // Link back to the master task
-          });
-        })
-      );
-      res.status(201).json({ message: `${childTasks.length} individual tasks created successfully` });
+    // If it's a string (single ID), convert to array
+    if (typeof finalAssignees === 'string') {
+      finalAssignees = [finalAssignees];
+    }
+
+    if (!finalAssignees || finalAssignees.length === 0) {
+      finalAssignees = [creatorId]; // Assign to self if empty
     } else {
-      // This is the original "group" logic
-      const groupTask = await Task.create({
-        title, description, priority, dueDate, attachments, todoChecklist,
-        assignedTo, // This is an array of IDs
-        createdBy: req.user._id,
-        organizationId,
-        assignmentType: "group",
+      // SECURITY: Ensure all assigned users actually belong to this organization
+      // We check if these users exist AND have a membership in the target org
+      const validUsersCount = await User.countDocuments({
+        _id: { $in: finalAssignees },
+        "memberships.organizationId": organizationId
       });
 
-      // Populate to return full details immediately
-      await groupTask.populate("assignedTo", "name email profileImageUrl");
-
-      res.status(201).json({ message: "Group task created successfully", task: groupTask });
+      if (validUsersCount !== finalAssignees.length) {
+        return res.status(403).json({ message: "Cannot assign tasks to users outside your organization." });
+      }
     }
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+
+    // 3. Create the Task (Group/Shared Task Logic)
+    const newTask = new Task({
+      title,
+      description,
+      priority: priority || 'Medium',
+      status: 'Pending',
+      organizationId, // Automatically link to creator's org context
+      assignedTo: finalAssignees,
+      createdBy: creatorId,
+      dueDate,
+      todoChecklist: todoChecklist || [],
+      attachments: attachments || [],
+      assignmentType: 'group' // Explicitly marking as group/shared
+    });
+
+    const task = await newTask.save();
+
+    // Populate for immediate frontend display
+    await task.populate("assignedTo", "name email profileImageUrl");
+
+    res.status(201).json(task);
+
+  } catch (err) {
+    console.error("Error in createTask:", err.message);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -265,29 +269,38 @@ const deleteTask = async (req, res) => {
 // @desc    Update task status
 // @route   PUT /api/tasks/:id/status
 // @access  Private
+// @desc    Update task status
+// @route   PUT /api/tasks/:id/status
+// @access  Private
 const updateTaskStatus = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
 
     if (!task) return res.status(404).json({ message: "Task not found" });
 
+    // SECURITY: Allow if User is the Creator OR User is in the 'assignedTo' list OR Admin
+    const isCreator = task.createdBy.toString() === req.user._id.toString();
     const isAssigned = task.assignedTo.some(
       (userId) => userId.toString() === req.user._id.toString()
     );
 
-    if (!isAssigned && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Not authorized" });
+    if (!isCreator && !isAssigned && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to update this task" });
     }
 
-    task.status = req.body.status || task.status;
+    const { status } = req.body;
+    if (status) {
+      task.status = status;
+    }
 
+    // Smart Logic: If Completed, mark checklist items as done
     if (task.status === "Completed") {
       task.todoChecklist.forEach((item) => (item.completed = true));
       task.progress = 100;
     }
 
     await task.save();
-    res.json({ message: "Task status updated", task });
+    res.json(task);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -309,7 +322,23 @@ const updateTaskChecklist = async (req, res) => {
         .json({ message: "Not authorized to update checklist" });
     }
 
-    task.todoChecklist = todoChecklist; // Replace with updated checklist
+    // Update checklist items with author tracking
+    // We iterate through the new list and compare/assign
+    task.todoChecklist = todoChecklist.map((newItem) => {
+      const existingItem = task.todoChecklist.find(i => i._id && newItem._id && i._id.toString() === newItem._id.toString());
+
+      // If status changed to completed, set completedBy
+      if (newItem.completed && (!existingItem || !existingItem.completed)) {
+        newItem.completedBy = req.user._id;
+      } else if (newItem.completed && existingItem && existingItem.completed) {
+        // Keep existing author
+        newItem.completedBy = existingItem.completedBy;
+      } else {
+        // Not completed
+        newItem.completedBy = null;
+      }
+      return newItem;
+    });
 
     // Auto-update progress based on checklist completion
     const completedCount = task.todoChecklist.filter(
@@ -319,9 +348,9 @@ const updateTaskChecklist = async (req, res) => {
     task.progress =
       totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 
-    // Auto-mark task as completed if all items are checked
+    // Smart Status Logic
     if (task.progress === 100) {
-      task.status = "Completed";
+      task.status = "In Review"; // Changed from "Completed"
     } else if (task.progress > 0) {
       task.status = "In Progress";
     } else {
@@ -332,7 +361,7 @@ const updateTaskChecklist = async (req, res) => {
     const updatedTask = await Task.findById(req.params.id).populate(
       "assignedTo",
       "name email profileImageUrl"
-    );
+    ).populate("todoChecklist.completedBy", "name profileImageUrl"); // Populate who finished items
 
     res.json({ message: "Task checklist updated", task: updatedTask });
   } catch (error) {
@@ -615,6 +644,112 @@ const scheduleTaskOnCalendar = async (req, res) => {
   }
 };
 
+// @desc    Review a task (Admin: Approve or Reject)
+// @route   PUT /api/tasks/:id/review
+// @access  Private (Admin)
+const reviewTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body; // 'APPROVE' or 'REJECT'
+    const adminId = req.user._id;
+
+    const task = await Task.findById(id);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (action === "APPROVE") {
+      task.status = "Completed";
+      // Ensure progress is 100
+      task.progress = 100;
+      task.todoChecklist.forEach(item => {
+        if (!item.completed) {
+          item.completed = true;
+          item.completedBy = adminId; // Auto-complete by Admin? Or keep null? Admin effectively completed it.
+        }
+      });
+    } else if (action === "REJECT") {
+      task.status = "In Progress";
+      // Ideally, we might want to uncheck specific items, but for now, we just push it back.
+      // Or we can rely on progress. If progress was 100, we simply change status.
+      // User requested: "Optionally accept a comment" -> We can log it or store it if we had a field.
+      // For now, simple status revert.
+    } else {
+      return res.status(400).json({ message: "Invalid action" });
+    }
+
+    await task.save();
+    res.json({ message: `Task ${action === "APPROVE" ? "Approved" : "Rejected"}`, task });
+
+  } catch (error) {
+    console.error("Error reviewing task:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Get tasks assigned to the current user within their organization
+// @route   GET /api/tasks/my-tasks
+// @access  Private (User)
+const getMyOrganizationTasks = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    const currentUserOrg = req.headers['x-org-id'];
+
+    if (!currentUserOrg) {
+      return res.status(400).json({ message: "Organization context missing" });
+    }
+
+    // New logic with organizationId and assignedTo indexes
+    const tasks = await Task.find({
+      organizationId: currentUserOrg,
+      assignedTo: { $in: [currentUserId] }
+    })
+      .populate('assignedTo', 'name email profileImageUrl')
+      .populate('createdBy', 'name')
+      .sort({ createdAt: -1 });
+
+    // Calculate summary statistics for the frontend tabs
+    const allTasksCount = tasks.length;
+    const pendingTasks = tasks.filter(t => t.status === "Pending").length;
+    const inProgressTasks = tasks.filter(t => t.status === "In Progress" || t.status === "In Review").length; // Group active
+    const completedTasks = tasks.filter(t => t.status === "Completed").length;
+
+    res.json({
+      tasks,
+      statusSummary: {
+        all: allTasksCount,
+        pendingTasks,
+        inProgressTasks,
+        completedTasks,
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in getMyOrganizationTasks:", error.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc    Get all organization tasks (Admin Only)
+// @route   GET /api/tasks/organization
+// @access  Private (Admin)
+const getAllOrganizationTasks = async (req, res) => {
+  try {
+    const orgId = req.headers['x-org-id']; // Or req.user.organizationId, consistent with others
+
+    // Fetch ALL tasks belonging to this Org
+    const tasks = await Task.find({ organizationId: orgId })
+      .populate('assignedTo', 'name email') // Show us WHO is working on it
+      .populate('createdBy', 'name')        // Show us WHO created it
+      .sort({ createdAt: -1 });
+
+    res.json(tasks);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
 
 module.exports = {
   getTasks,
@@ -629,4 +764,7 @@ module.exports = {
   getMasterTaskDetails,
   deleteMasterTask,
   scheduleTaskOnCalendar,
+  reviewTask,
+  getMyOrganizationTasks,
+  getAllOrganizationTasks,
 };

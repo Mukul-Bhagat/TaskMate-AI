@@ -58,6 +58,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/google", googleApiRoutes);
 app.use("/api/orgs", require("./routes/orgRoutes"));
+app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 
 // Start Server
 const PORT = process.env.PORT || 8000; // I see PORT=8000 in your .env, so the server will run there

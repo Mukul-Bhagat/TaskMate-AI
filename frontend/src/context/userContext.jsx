@@ -44,6 +44,9 @@ const UserProvider = ({ children }) => {
       setActiveOrg(targetOrg);
       localStorage.setItem('activeOrgId', idToSave);
 
+      // Update user role to match the new active organization
+      setUser(prev => ({ ...prev, role: targetOrg.role }));
+
       // Optional: Trigger a window reload or specific refetch to update all data views
       // window.location.reload(); 
       // OR simply rely on the updated axios interceptor for subsequent calls
@@ -60,6 +63,11 @@ const UserProvider = ({ children }) => {
       try {
         const response = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
         const userData = response.data;
+
+        // Ensure role is available based on memberships (Default or Active)
+        // We'll update this properly after determining activeOrg below, but for now defaults:
+        userData.role = userData.memberships?.[0]?.role || 'member';
+
         setUser(userData);
 
         // -- Active Org Logic --

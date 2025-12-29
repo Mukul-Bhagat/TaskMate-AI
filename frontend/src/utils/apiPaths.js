@@ -18,12 +18,16 @@ export const API_PATHS = {
     UPDATE_USER: (userId) => `/api/users/${userId}`, // Update a user
     DELETE_USER: (userId) => `/api/users/${userId}`, // Delete a user
     INVITE_USER: "/api/users/invite", //Invites a user
+    GET_ORG_MEMBERS: "/api/users/organization-members",
+    ADD_MEMBER: "/api/users/add-member",
+    BULK_IMPORT: "/api/users/bulk-import",
   },
 
   TASKS: {
     BASE: "/api/tasks",
     GET_DASHBOARD_DATA: "/api/tasks/dashboard-data", // Get Dashboard Data
     GET_USER_DASHBOARD_DATA: "/api/tasks/user-dashboard-data", // Get User Dashboard Data
+    GET_MY_ORG_TASKS: "/api/tasks/my-tasks", // Get secure assigned tasks
     GET_ALL_TASKS: "/api/tasks", // Get all tasks (Admin: all, User: only assigned tasks)
     GET_TASK_BY_ID: (taskId) => `/api/tasks/${taskId}`, // Get task by ID
     CREATE_TASK: "/api/tasks", // Create a new task (Admin only)
@@ -31,7 +35,9 @@ export const API_PATHS = {
     DELETE_TASK: (taskId) => `/api/tasks/${taskId}`, // Delete a task (Admin only)
     UPDATE_TASK_STATUS: (taskId) => `/api/tasks/${taskId}/status`, // Update task status
     UPDATE_TODO_CHECKLIST: (taskId) => `/api/tasks/${taskId}/todo`, // Update task todo checklist
+    REVIEW_TASK: (taskId) => `/api/tasks/${taskId}/review`, // Admin review (Approve/Reject)
     GET_MASTER_TASK_DETAILS: "/api/tasks/master",
+    GET_ORG_TASKS: "/api/tasks/organization",
   },
 
   REPORTS: {
@@ -41,5 +47,9 @@ export const API_PATHS = {
 
   IMAGE: {
     UPLOAD_IMAGE: "/api/auth/upload-image",
+  },
+
+  DASHBOARD: {
+    GET_STATS: "/api/dashboard/stats",
   },
 };

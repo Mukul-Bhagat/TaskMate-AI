@@ -12,7 +12,8 @@ const {
 } = require('../controllers/orgController');
 
 // 1. Public/Open Routes (Authenticated but no specific Org context needed yet)
-router.post('/create', authMiddleware, createOrg);
+router.post('/', authMiddleware, createOrg);
+router.post('/create', authMiddleware, createOrg); // Keep legacy /create just in case
 // NOTE: requestToJoin takes slug as a param based on controller definition
 router.post('/join/:inviteSlug', authMiddleware, requestToJoin);
 

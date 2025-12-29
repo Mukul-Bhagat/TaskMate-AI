@@ -1,129 +1,157 @@
-import React, { useState, useEffect } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import React, { useState, useEffect } from 'react';
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
-import { LuFileSpreadsheet, LuPlus } from "react-icons/lu"; // Added LuPlus
-import UserCard from "../../components/Cards/UserCard";
-import Modal from "../../components/Modal"; // Import the Modal
-import Input from "../../components/inputs/input"; // Import the Input
-import toast from "react-hot-toast"; // Import toast for notifications
+import ImportCSVModal from '../../components/ImportCSVModal';
+import DashboardLayout from '../../components/layouts/DashboardLayout';
+import { FaUserPlus, FaFileImport, FaUserCheck, FaSearch, FaEllipsisV } from 'react-icons/fa';
 
 const ManageUsers = () => {
-  const [allUsers, setAllUsers] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
 
-  // --- NEW STATE FOR THE INVITE MODAL ---
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  // Single Add Form State
+  const [formData, setFormData] = useState({
+    email: ''
+  });
 
-  const getAllUsers = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
-      if (response.data?.length > 0) {
-        setAllUsers(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("Failed to fetch team members.");
-    }
+      const res = await axiosInstance.get(API_PATHS.USERS.GET_ORG_MEMBERS);
+      setUsers(res.data);
+    } catch (err) { console.error(err); }
   };
 
-  // --- NEW FUNCTION TO SEND THE INVITE ---
-  const handleSendInvite = async (e) => {
+  useEffect(() => { fetchUsers(); }, []);
+
+  const handleAddUser = async (e) => {
     e.preventDefault();
-    setLoading(true);
     try {
-      await axiosInstance.post(API_PATHS.USERS.INVITE_USER, { email: inviteEmail });
-      toast.success(`Invite sent successfully to ${inviteEmail}`);
-      setIsInviteModalOpen(false); // Close modal on success
-      setInviteEmail(""); // Clear the input
-      getAllUsers(); // Refresh the user list
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to send invite.");
-    } finally {
-      setLoading(false);
+      await axiosInstance.post(API_PATHS.USERS.ADD_MEMBER, formData); // Sends { email: ... }
+      alert('User Invited Successfully!');
+      setFormData({ email: '' });
+      fetchUsers();
+    } catch (err) {
+      alert('Error adding user: ' + (err.response?.data?.msg || err.message));
     }
   };
 
-  const handleDownloadReport = async () => {
-    try {
-      const response = await axiosInstance.get(API_PATHS.REPORTS.EXPORT_USERS, {
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "team_members_report.xlsx");
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading report:", error);
-      toast.error("Failed to download report.");
-    }
-  };
-
-  useEffect(() => {
-    getAllUsers();
-  }, []);
+  const filteredUsers = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.includes(search));
 
   return (
-    <DashboardLayout activeMenu="Team Members">
-      <div className="mt-5 mb-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between">
-          <h2 className="text-xl md:text-xl font-medium">Team Members</h2>
-
-          {/* --- UPDATED HEADER BUTTONS --- */}
-          <div className="flex items-center gap-4">
-            <button
-              className="add-btn"
-              onClick={() => setIsInviteModalOpen(true)}
-            >
-              <LuPlus /> Invite User
-            </button>
-            <button
-              className="flex download-btn gap-4"
-              onClick={handleDownloadReport}
-            >
-              <LuFileSpreadsheet className="text-lg" />
-              Download Report
-            </button>
+    <DashboardLayout activeMenu="Manage Members">
+      <div className="p-8 bg-gray-50 min-h-screen font-sans">
+        <div className="flex justify-between items-end mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800">Manage Users</h2>
+            <p className="text-gray-500 mt-1">Create, view, and manage user accounts and access.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-          {allUsers?.map((user) => (
-            <UserCard key={user._id} userInfo={user} />
-          ))}
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+
+          {/* --- LEFT PANEL: ADD USER FORM --- */}
+          <div className="w-full lg:w-1/3 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                <FaUserPlus className="mr-2 text-red-500" />Invite New User
+              </h3>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="text-red-500 border border-red-500 px-3 py-1 rounded text-sm hover:bg-red-50 transition flex items-center"
+              >
+                <FaFileImport className="mr-1" /> Import CSV
+              </button>
+            </div>
+
+            <form onSubmit={handleAddUser}>
+
+              <div className="mb-6">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Email Address</label>
+                <input
+                  type="email"
+                  className="w-full border rounded p-2 focus:ring-2 focus:ring-red-200 outline-none"
+                  placeholder="name@example.com"
+                  required
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                />
+                <p className="text-xs text-gray-400 mt-2">
+                  An invite will be sent to this email with a temporary password.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg transition shadow-md flex justify-center items-center"
+              >
+                <FaUserCheck className="mr-2" /> Send Invite
+              </button>
+            </form>
+          </div>
+
+          {/* --- RIGHT PANEL: USER LIST --- */}
+          <div className="w-full lg:w-2/3 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                End Users <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full ml-2">{filteredUsers.length}</span>
+              </h3>
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  className="pl-10 pr-4 py-2 border rounded-lg w-64 text-sm focus:ring-2 focus:ring-red-200 outline-none"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b text-gray-400 text-xs uppercase tracking-wider">
+                    <th className="pb-3 pl-2 font-medium">Name</th>
+                    <th className="pb-3 font-medium">Email</th>
+                    <th className="pb-3 font-medium">Phone</th>
+                    <th className="pb-3 text-right pr-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm text-gray-700">
+                  {filteredUsers.length === 0 ? (
+                    <tr><td colSpan="4" className="text-center py-6 text-gray-400">No users found.</td></tr>
+                  ) : filteredUsers.map(user => (
+                    <tr key={user._id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                      <td className="py-4 pl-2 font-medium flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-red-100 text-red-500 flex items-center justify-center font-bold text-xs uppercase">
+                          {user.name.charAt(0)}
+                        </div>
+                        {user.name}
+                      </td>
+                      <td className="py-4 text-gray-500">{user.email}</td>
+                      <td className="py-4 text-gray-400">{user.phone || 'N/A'}</td>
+                      <td className="py-4 text-right pr-2">
+                        <button className="text-gray-400 hover:text-red-500 transition">
+                          <FaEllipsisV />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
+
+        {/* --- IMPORT MODAL --- */}
+        <ImportCSVModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onSuccess={fetchUsers}
+        />
       </div>
-
-      {/* --- NEW INVITE USER MODAL --- */}
-      <Modal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        title="Invite New User"
-      >
-        <form onSubmit={handleSendInvite}>
-          <p className="text-sm text-slate-600 mb-4">
-            Enter the email address of the user you want to invite. They will receive an email with instructions to set up their account.
-          </p>
-          <Input
-            value={inviteEmail}
-            onChange={({ target }) => setInviteEmail(target.value)}
-            label="Email Address"
-            placeholder="user@example.com"
-            type="email"
-          />
-          <div className="flex justify-end mt-6">
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? "Sending..." : "Send Invite"}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
     </DashboardLayout>
   );
 };

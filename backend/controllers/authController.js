@@ -6,8 +6,8 @@ const crypto = require('crypto'); // Import crypto
 const nodemailer = require('nodemailer'); // Import nodemailer
 
 // Generate JWT Token
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const generateToken = (userId, role = 'member', organizationId = null) => {
+  return jwt.sign({ id: userId, role, organizationId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 
 // @desc    Register a new user
@@ -38,7 +38,7 @@ const registerUser = async (req, res) => {
       email: user.email,
       memberships: user.memberships,
       profileImageUrl: user.profileImageUrl,
-      token: generateToken(user._id),
+      token: generateToken(user._id, 'member', null),
       message: "Registration successful"
     });
 
@@ -47,6 +47,7 @@ const registerUser = async (req, res) => {
   }
 };
 
+// @desc    Login user
 // @desc    Login user
 const loginUser = async (req, res) => {
   try {
@@ -62,13 +63,26 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // Determine Role
+    const primaryMembership = user.memberships && user.memberships.length > 0 ? user.memberships[0] : null;
+    const role = primaryMembership ? primaryMembership.role : 'member';
+    const organizationId = primaryMembership ? primaryMembership.organizationId._id : null;
+
+    // Create Token
+    const token = jwt.sign(
+      { id: user._id, role, organizationId },
+      process.env.JWT_SECRET,
+      { expiresIn: "5d" }
+    );
+
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       memberships: user.memberships,
       profileImageUrl: user.profileImageUrl,
-      token: generateToken(user._id),
+      role: role,
+      token: token,
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });

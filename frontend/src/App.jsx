@@ -9,6 +9,7 @@ import SignUp from './pages/Auth/SignUp'; // Updated
 import Onboarding from './pages/Onboarding'; // New
 import CreateTask from './pages/Admin/CreateTask';
 import ManageTasks from './pages/Admin/ManageTasks';
+import OrganizationTasks from './pages/Admin/OrganizationTasks';
 import ManageUsers from './pages/Admin/ManageUsers';
 import Analytics from './pages/Admin/Analytics';
 import UserDashboard from './pages/User/UserDashboard';
@@ -24,6 +25,7 @@ import UserProvider, { UserContext } from './context/userContext';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {
+  // Main App Component with Routing
   return (
     <UserProvider>
       <Router>
@@ -51,6 +53,7 @@ const App = () => {
             <Route path="/user/dashboard" element={<Navigate to="/dashboard" replace />} />
 
             <Route path="/manage-tasks" element={<ManageTasks />} />
+            <Route path="/organization/tasks" element={<OrganizationTasks />} />
             <Route path="/manage-users" element={<ManageUsers />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/admin/create-task" element={<CreateTask />} />

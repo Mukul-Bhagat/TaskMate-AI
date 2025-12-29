@@ -28,17 +28,20 @@ const SignIn = () => {
                 password,
             });
 
-            const { token, memberships, ...userData } = response.data;
+            const { token, memberships, role, ...userData } = response.data;
 
-            // Update context and localStorage
             localStorage.setItem("token", token);
-            updateUser({ ...userData, memberships, token });
+            updateUser({ ...userData, memberships, token, role });
 
-            // Check memberships for redirection
+            // Redirection Logic
             if (!memberships || memberships.length === 0) {
                 navigate("/onboarding");
             } else {
-                navigate("/dashboard");
+                if (role === 'admin') {
+                    navigate("/dashboard");
+                } else {
+                    navigate("/user/tasks");
+                }
             }
 
             toast.success("Login Successful");

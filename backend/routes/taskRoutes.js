@@ -14,6 +14,9 @@ const {
   getMasterTaskDetails,
   deleteMasterTask,
   scheduleTaskOnCalendar,
+  reviewTask,
+  getMyOrganizationTasks,
+  getAllOrganizationTasks,
 } = require("../controllers/taskController");
 
 const router = express.Router();
@@ -21,6 +24,7 @@ const router = express.Router();
 // Task Management Routes
 router.get("/dashboard-data", protect, getDashboardData);
 router.get("/user-dashboard-data", protect, getUserDashboardData);
+router.get("/my-tasks", protect, getMyOrganizationTasks); // Get assigned tasks for logged-in user (Secure)
 router.get("/", protect, getTasks); // Get all tasks (Admin: all, User: assigned)
 router.get("/:id", protect, getTaskById); // Get task by ID
 router.post("/", protect, adminOnly, createTask); // Create a task (Admin only)
@@ -31,5 +35,7 @@ router.put("/:id/todo", protect, updateTaskChecklist); // Update task checklist
 router.get("/master/:id", protect, adminOnly, getMasterTaskDetails); //Get Individual all tasks
 router.delete("/master/:id", protect, adminOnly, deleteMasterTask);
 router.post("/:id/schedule", protect, scheduleTaskOnCalendar);
+router.put("/:id/review", protect, adminOnly, reviewTask);
+router.get("/organization", protect, adminOnly, getAllOrganizationTasks);
 
 module.exports = router;

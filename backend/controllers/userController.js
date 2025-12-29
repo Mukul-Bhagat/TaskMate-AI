@@ -1,40 +1,33 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-const crypto = require("crypto"); // Built-in Node.js module
+const crypto = require("crypto");
+const fs = require('fs');
+const csv = require('csv-parser');
+const sendEmail = require('../utils/sendEmail');
 
 // @desc    Get all users (Admin only)
 // @route   GET /api/users/
 // @access  Private (Admin)
 const getUsers = async (req, res) => {
   try {
-    // 1. Find all users with the role of "member" and exclude their passwords
     const users = await User.find({ role: "member" }).select("-password");
-
-    // 2. Add task counts to each user
     const usersWithTaskCounts = await Promise.all(
       users.map(async (user) => {
-        // Count tasks with "Pending" status for the current user
         const pendingTasks = await Task.countDocuments({
           assignedTo: user._id,
           status: "Pending",
         });
-
-        // Count tasks with "In Progress" status for the current user
         const inProgressTasks = await Task.countDocuments({
           assignedTo: user._id,
           status: "In Progress",
         });
-
-        // Count tasks with "Completed" status for the current user
         const completedTasks = await Task.countDocuments({
           assignedTo: user._id,
           status: "Completed",
         });
-
-        // Return a new object combining the user's data with their task counts
         return {
-          ...user._doc, // Include all existing user data
+          ...user._doc,
           pendingTasks,
           inProgressTasks,
           completedTasks,
@@ -52,15 +45,9 @@ const getUsers = async (req, res) => {
 // @access  Private
 const getUserById = async (req, res) => {
   try {
-    // Find the user by the ID from the URL parameters and exclude the password
     const user = await User.findById(req.params.id).select("-password");
-    
-    // If no user is found with that ID, return a 404 error
     if (!user) return res.status(404).json({ message: "User not found" });
-    
-    // If the user is found, send their data as the response
     res.json(user);
-    
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -75,9 +62,6 @@ const deleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
-    // Optional: Add logic to re-assign or delete tasks associated with this user
-    
     await user.deleteOne();
     res.json({ message: "User deleted successfully" });
   } catch (error) {
@@ -91,44 +75,187 @@ const deleteUser = async (req, res) => {
 const inviteUser = async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Please provide an email." });
 
-    if (!email) {
-      return res.status(400).json({ message: "Please provide an email." });
-    }
-
-    // 1. Check if user with this email already exists
     const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: "A user with this email already exists." });
-    }
+    if (userExists) return res.status(400).json({ message: "A user with this email already exists." });
 
-    // 2. If user does not exist, create a new placeholder user
-    // We create a temporary name and a disabled/random password.
-    // The user will be prompted to change their password on first login.
-    const name = email.split('@')[0]; // Use the part before the @ as a temporary name
-    const tempPassword = Math.random().toString(36).slice(-8); // Generate a random password
+    const name = email.split('@')[0];
+    const tempPassword = Math.random().toString(36).slice(-8);
 
-    const user = await User.create({
+    await User.create({
       name,
       email,
-      password: tempPassword, // A password is required, so we create a temporary one
+      password: tempPassword,
       role: 'member',
     });
 
-    // In a full application, you would send an email to the user here.
-    // For now, we'll just confirm the creation.
-    
     res.status(201).json({ message: `User invited and account created for ${email}.` });
-
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
+// @desc    Get organization members
+// @route   GET /api/users/organization-members
+// @access  Private
+const getOrganizationMembers = async (req, res) => {
+  try {
+    const organizationId = req.headers['x-org-id'];
+
+    if (!organizationId) {
+      // Fallback: If no header, return members of the first org the user is part of (or empty)
+      // This prevents 500 error, but ideally frontend sends the header.
+      return res.status(400).json({ msg: "Organization Context Missing" });
+    }
+
+    // Find users who have a membership in this organization
+    const members = await User.find({
+      "memberships.organizationId": organizationId
+    }).select('-password');
+
+    res.json(members);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+// @desc    Add a new member to the organization (Email Only)
+// @route   POST /api/users/add-member
+// @access  Private (Admin)
+const addMember = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ msg: "Email is required" });
+
+    // Ensure we have an organization ID
+    const organizationId = req.headers['x-org-id'];
+    if (!organizationId) {
+      return res.status(400).json({ msg: "Organization Context Missing" });
+    }
+
+    // 1. Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // Check if already in THIS org
+      const alreadyMember = user.memberships.some(m => m.organizationId.toString() === organizationId.toString());
+      if (alreadyMember) {
+        return res.status(400).json({ msg: 'User already exists in this organization' });
+      }
+
+      // Add to org
+      user.memberships.push({ organizationId, role: 'member' });
+      await user.save();
+
+      return res.json(user);
+    }
+
+    // 2. Create New User
+    const name = email.split('@')[0];
+    const password = Math.random().toString(36).slice(-8); // Random 8-char password
+
+    user = new User({
+      name,
+      email,
+      memberships: [{ organizationId, role: 'member' }],
+      password // Set password initially
+    });
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+    await user.save();
+
+    // Send Invite Email with Creds
+    try {
+      await sendEmail(email, name, password);
+    } catch (emailErr) {
+      console.error("Email sending failed:", emailErr);
+    }
+
+    res.json(user);
+  } catch (err) {
+    console.error("Add Member Error:", err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+// @desc    Bulk Import Users (Email CSV)
+// @route   POST /api/users/bulk-import
+// @access  Private (Admin)
+const bulkImportUsers = async (req, res) => {
+  if (!req.file) return res.status(400).json({ msg: "No file uploaded" });
+
+  const results = [];
+  const errors = [];
+  const organizationId = req.headers['x-org-id'];
+
+  if (!organizationId) {
+    return res.status(400).json({ msg: "Organization Context Missing" });
+  }
+
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on('data', (data) => results.push(data))
+    .on('end', async () => {
+      for (const row of results) {
+        try {
+          // Flexible column matching
+          const email = row.Email || row.email || row.EMAIL || Object.values(row)[0];
+          if (!email || !email.includes('@')) continue;
+
+          let user = await User.findOne({ email });
+
+          if (user) {
+            const alreadyMember = user.memberships.some(m => m.organizationId.toString() === organizationId.toString());
+            if (!alreadyMember) {
+              user.memberships.push({ organizationId, role: 'member' });
+              await user.save();
+            } else {
+              errors.push(`Skipped ${email}: Already in organization`);
+            }
+            continue;
+          }
+
+          const name = email.split('@')[0];
+          const password = Math.random().toString(36).slice(-8);
+
+          const newUser = new User({
+            name,
+            email,
+            memberships: [{ organizationId, role: 'member' }],
+            password // Set initial password
+          });
+
+          const salt = await bcrypt.genSalt(10);
+          newUser.password = await bcrypt.hash(password, salt);
+          await newUser.save();
+
+          try {
+            await sendEmail(email, name, password);
+          } catch (e) { console.error("Email failed for", email); }
+
+        } catch (err) {
+          console.error(err);
+          errors.push(`Error adding row`);
+        }
+      }
+
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) { console.error("Error deleting temp file", e); }
+
+      res.json({ msg: "Import processed", count: results.length, errors });
+    });
+};
 
 module.exports = {
   getUsers,
   getUserById,
   deleteUser,
   inviteUser,
+  getOrganizationMembers,
+  addMember,
+  bulkImportUsers
 };

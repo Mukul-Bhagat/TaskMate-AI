@@ -1,15 +1,16 @@
-import { MdDashboard, MdAssignment, MdGroup, MdAnalytics } from "react-icons/md";
+import { MdDashboard, MdAssignment, MdGroup, MdAnalytics, MdAddCircle } from "react-icons/md";
 
 export const SIDE_MENU_DATA = [
   { label: "Dashboard", path: "/dashboard", icon: MdDashboard },
-  { label: "Manage Tasks", path: "/manage-tasks", icon: MdAssignment },
-  { label: "Manage Users", path: "/manage-users", icon: MdGroup },
+  { label: "Organization Tasks", path: "/organization/tasks", icon: MdAssignment },
+  { label: "Manage Members", path: "/manage-users", icon: MdGroup },
   { label: "Performance Analytics", path: "/analytics", icon: MdAnalytics },
+  { label: "Create Task", path: "/admin/create-task", icon: MdAddCircle },
 ];
 
 export const SIDE_MENU_USER_DATA = [
-  { label: "Dashboard", path: "/dashboard", icon: MdDashboard },
   { label: "My Tasks", path: "/user/tasks", icon: MdAssignment },
+  { label: "Create Task", path: "/admin/create-task", icon: MdAddCircle },
   { label: "Analytics", path: "/analytics", icon: MdAnalytics },
 ];
 
