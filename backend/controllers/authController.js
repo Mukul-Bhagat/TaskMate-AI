@@ -83,6 +83,7 @@ const loginUser = async (req, res) => {
       profileImageUrl: user.profileImageUrl,
       role: role,
       token: token,
+      requiresPasswordChange: user.requiresPasswordChange || false
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -255,6 +256,40 @@ const verifyEmail = async (req, res) => {
   }
 };
 
+// @desc    Change password (for forced reset)
+// @route   POST /api/auth/change-password
+// @access  Private
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check old password
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid old password" });
+    }
+
+    // Update password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.requiresPasswordChange = false; // Reset the flag
+    await user.save();
+
+    res.json({
+      message: "Password changed successfully",
+      requiresPasswordChange: false,
+      token: generateToken(user._id)
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -265,4 +300,5 @@ module.exports = {
   generateToken,
   verifyAdminToken,
   verifyEmail,
+  changePassword,
 };

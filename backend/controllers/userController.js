@@ -160,7 +160,8 @@ const addMember = async (req, res) => {
       name,
       email,
       memberships: [{ organizationId, role: 'member' }],
-      password // Set password initially
+      password, // Set password initially
+      requiresPasswordChange: true // Force reset on first login
     });
 
     const salt = await bcrypt.genSalt(10);
@@ -225,7 +226,8 @@ const bulkImportUsers = async (req, res) => {
             name,
             email,
             memberships: [{ organizationId, role: 'member' }],
-            password // Set initial password
+            password, // Set initial password
+            requiresPasswordChange: true // Force reset on first login
           });
 
           const salt = await bcrypt.genSalt(10);

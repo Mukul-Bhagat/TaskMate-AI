@@ -8,7 +8,9 @@ const {
     requestToJoin,
     approveRequest,
     switchOrg,
-    getOrgMembers
+    getOrgMembers,
+    getOrgDetails,
+    updateOrganization
 } = require('../controllers/orgController');
 
 // 1. Public/Open Routes (Authenticated but no specific Org context needed yet)
@@ -23,5 +25,7 @@ router.get('/:orgId/invite-link', authMiddleware, requireOrgAccess, adminOnly, g
 router.post('/:orgId/approve', authMiddleware, requireOrgAccess, adminOnly, approveRequest);
 router.get('/switch/:orgId', authMiddleware, switchOrg);
 router.get('/:orgId/members', authMiddleware, requireOrgAccess, getOrgMembers);
+router.get('/my-org', authMiddleware, getOrgDetails);
+router.put('/my-org', authMiddleware, updateOrganization);
 
 module.exports = router;

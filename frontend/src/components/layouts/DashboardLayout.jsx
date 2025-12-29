@@ -1,43 +1,29 @@
-import React, { useContext, useState } from 'react';
-import { UserContext } from '../../context/userContext';
-import Navbar from './Navbar';
+
+import React, { useState } from 'react';
 import SideMenu from './SideMenu';
-import OrgSidebar from '../OrgSidebar';
-import CreateOrgModal from '../modals/CreateOrgModal';
+import Topbar from '../Topbar';
 
 const DashboardLayout = ({ children, activeMenu }) => {
-  const { user } = useContext(UserContext);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-900">
-      {/* 1. Org Sidebar (Far Left) */}
-      {user && (
-        <OrgSidebar onOpenCreateModal={() => setIsModalOpen(true)} />
-      )}
+    <div className="flex h-screen bg-gray-50 dark:bg-[#0f172a] transition-colors duration-300 overflow-hidden">
 
-      {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <Navbar activeMenu={activeMenu} />
+      {/* Sidebar (Passes state down) */}
+      <SideMenu isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Inner Content (Sidebar + Page) */}
-        {user && (
-          <div className="flex flex-1 overflow-hidden">
-            <div className="max-[1080px]:hidden h-full">
-              <SideMenu activeMenu={activeMenu} />
-            </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-full relative w-full">
 
-            <div className="grow mx-5 overflow-y-auto p-2">
-              {children}
-            </div>
-          </div>
-        )}
+        {/* Topbar needs to know how to open sidebar */}
+        <Topbar onMenuClick={() => setSidebarOpen(true)} />
+
+        {/* Scrollable Page Content */}
+        <div className="flex-1 overflow-y-auto p-0 scroll-smooth">
+          {children}
+        </div>
+
       </div>
-
-      <CreateOrgModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
     </div>
   );
 };

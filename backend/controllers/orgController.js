@@ -246,11 +246,69 @@ const getOrgMembers = async (req, res) => {
     }
 };
 
+// @desc    Get Organization Details
+// @route   GET /api/orgs/my-org
+// @access  Private (Admin/Member)
+const getOrgDetails = async (req, res) => {
+    try {
+        // 1. Determine Org ID from Token Context or Header
+        const orgId = req.user.organizationId || req.headers['x-org-id'];
+
+        if (!orgId) {
+            return res.status(400).json({ msg: 'Organization Context Missing' });
+        }
+
+        // 2. Fetch Org
+        const org = await Organization.findById(orgId);
+        if (!org) {
+            return res.status(404).json({ msg: 'Organization not found' });
+        }
+
+        // 3. Return Details
+        res.json(org);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+const updateOrganization = async (req, res) => {
+    try {
+        const { name, address, phone, website } = req.body;
+        const orgId = req.user.organizationId || req.headers['x-org-id'];
+
+        if (!orgId) return res.status(400).json({ msg: 'Organization Context Missing' });
+
+        // Security: Ensure user is Admin (The middleware usually sets req.user.role based on active org in token)
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ msg: 'Access Denied. Admins only.' });
+        }
+
+        let org = await Organization.findById(orgId);
+        if (!org) return res.status(404).json({ msg: 'Organization not found' });
+
+        // Update Fields
+        if (name) org.name = name;
+        if (address) org.address = address;
+        if (phone) org.phone = phone;
+        if (website) org.website = website;
+
+        await org.save();
+        res.json(org);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
 module.exports = {
     createOrg,
     getInviteLink,
     requestToJoin,
     approveRequest,
     switchOrg,
-    getOrgMembers
+    getOrgMembers,
+    getOrgDetails,
+    updateOrganization
 };

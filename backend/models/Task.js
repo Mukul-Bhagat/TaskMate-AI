@@ -16,7 +16,7 @@ const taskSchema = new mongoose.Schema(
         dueDate: { type: Date, required: true },
         assignmentType: {
             type: String,
-            enum: ["group", "individual"],
+            enum: ["group", "individual", "me"],
             default: "group",
         },
         parentTask: {
@@ -27,7 +27,11 @@ const taskSchema = new mongoose.Schema(
         assignedTo: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
         createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization" },
-        attachments: [{ type: String }],
+        attachments: [{
+            type: { type: String, enum: ['file', 'link'], required: true },
+            url: { type: String, required: true },
+            name: { type: String }
+        }],
         todoChecklist: [todoSchema],
         progress: { type: Number, default: 0 }
 

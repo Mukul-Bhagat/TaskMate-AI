@@ -59,6 +59,9 @@ const SignIn = () => {
     return (
         <AuthLayout>
             <div className="flex flex-col justify-center h-full">
+                <div className="flex justify-center mb-6">
+                    <img src="/blacklogo.png" alt="TaskMate" className="h-10 w-auto" />
+                </div>
                 <h2 className="text-2xl font-bold mb-6 text-center">Sign In</h2>
                 <form onSubmit={handleLogin} className="space-y-4 max-w-sm mx-auto w-full">
                     <div>

@@ -3,7 +3,7 @@ import { MdDashboard, MdAssignment, MdGroup, MdAnalytics, MdAddCircle } from "re
 export const SIDE_MENU_DATA = [
   { label: "Dashboard", path: "/dashboard", icon: MdDashboard },
   { label: "Organization Tasks", path: "/organization/tasks", icon: MdAssignment },
-  { label: "Manage Members", path: "/manage-users", icon: MdGroup },
+  { label: "Users", path: "/manage-users", icon: MdGroup },
   { label: "Performance Analytics", path: "/analytics", icon: MdAnalytics },
   { label: "Create Task", path: "/admin/create-task", icon: MdAddCircle },
 ];

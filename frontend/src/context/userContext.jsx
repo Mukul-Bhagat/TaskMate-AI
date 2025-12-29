@@ -71,6 +71,7 @@ const UserProvider = ({ children }) => {
         setUser(userData);
 
         // -- Active Org Logic --
+        // -- Active Org Logic --
         if (userData.memberships && userData.memberships.length > 0) {
           const storedOrgId = localStorage.getItem('activeOrgId');
 
@@ -84,11 +85,19 @@ const UserProvider = ({ children }) => {
           // Default to first org if stored one is invalid/missing
           if (!initialOrg) {
             initialOrg = userData.memberships[0];
-            const idToSave = initialOrg.organizationId._id || initialOrg.organizationId;
-            localStorage.setItem('activeOrgId', idToSave);
           }
 
+          const activeOrgId = initialOrg.organizationId._id || initialOrg.organizationId;
+
+          // Force update local storage immediately ensures axiosInstance picks it up
+          localStorage.setItem('activeOrgId', activeOrgId);
+
+          // Update State
           setActiveOrg(initialOrg);
+
+          // IMPORTANT: Set the user's current effective role based on this active org
+          userData.role = initialOrg.role;
+          setUser(userData);
         } else {
           setActiveOrg(null);
         }

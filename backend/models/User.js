@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema(
 
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
+    requiresPasswordChange: { type: Boolean, default: false }, // Force reset on first login
   },
   { timestamps: true }
 );

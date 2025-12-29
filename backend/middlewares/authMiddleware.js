@@ -30,27 +30,34 @@ const protect = async (req, res, next) => {
   }
 };
 
-// Middleware for Admin-only access (Global or Context aware)
+// Middleware for Admin-only access
 const adminOnly = (req, res, next) => {
-  // Check global admin role if it exists (legacy) or specific org admin
-  if (req.user && (req.user.role === "admin" || req.user.isAdmin)) {
-    next();
+  if (!req.user) return res.status(401).json({ message: "Not authorized" });
+
+  // 1. Check Global Admin (Legacy support)
+  if (req.user.role === "admin" || req.user.isAdmin) {
+    return next();
   }
-  // Context-aware admin check (if x-org-id provided)
-  else if (req.headers['x-org-id']) {
-    const orgId = req.headers['x-org-id'];
-    const isAdmin = req.user.memberships?.find(
-      (m) => m.organizationId.toString() === orgId && m.role === 'admin'
+
+  // 2. Check Context-Specific Admin (if x-org-id provided)
+  const contextOrgId = req.headers['x-org-id'];
+  if (contextOrgId) {
+    const isContextAdmin = req.user.memberships?.some(
+      (m) => m.organizationId.toString() === contextOrgId && m.role === 'admin'
     );
-    if (isAdmin) {
-      next();
-    } else {
-      res.status(403).json({ message: "Access denied, admin only for this organization" });
+    if (isContextAdmin) {
+      return next();
     }
   }
-  else {
-    res.status(403).json({ message: "Access denied, admin only" });
+
+  // 3. Fallback: Check if they are an admin of ANY active organization
+  // This allows them to access generic admin routes, and controllers can default to their first admin org.
+  const isAnyAdmin = req.user.memberships?.some(m => m.role === 'admin');
+  if (isAnyAdmin) {
+    return next();
   }
+
+  return res.status(403).json({ message: "Access denied, admin privilege required." });
 };
 
 // Middleware to check if user belongs to the organization specified in headers

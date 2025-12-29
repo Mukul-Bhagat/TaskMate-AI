@@ -132,9 +132,10 @@ const getTaskById = async (req, res) => {
 
 const createTask = async (req, res) => {
   try {
-    const { title, description, assignedTo, priority, dueDate, todoChecklist, attachments } = req.body;
+    const { title, description, assignedTo, priority, dueDate, todoChecklist, assignmentType } = req.body;
+    let { attachments } = req.body;
 
-    // 1. Get the current logged-in user's details
+    // 1. Get Context
     const creatorId = req.user._id;
     const organizationId = req.headers['x-org-id'];
 
@@ -142,47 +143,87 @@ const createTask = async (req, res) => {
       return res.status(400).json({ message: "Organization Context Missing" });
     }
 
-    // 2. Security Check: Validate 'assignedTo' users
-    let finalAssignees = assignedTo;
+    // 2. Process Attachments
+    const finalAttachments = [];
 
-    // If it's a string (single ID), convert to array
-    if (typeof finalAssignees === 'string') {
-      finalAssignees = [finalAssignees];
-    }
-
-    if (!finalAssignees || finalAssignees.length === 0) {
-      finalAssignees = [creatorId]; // Assign to self if empty
-    } else {
-      // SECURITY: Ensure all assigned users actually belong to this organization
-      // We check if these users exist AND have a membership in the target org
-      const validUsersCount = await User.countDocuments({
-        _id: { $in: finalAssignees },
-        "memberships.organizationId": organizationId
-      });
-
-      if (validUsersCount !== finalAssignees.length) {
-        return res.status(403).json({ message: "Cannot assign tasks to users outside your organization." });
+    // a. Parse Links (sent as JSON string or array in body)
+    if (attachments) {
+      try {
+        const parsedLinks = typeof attachments === 'string' ? JSON.parse(attachments) : attachments;
+        if (Array.isArray(parsedLinks)) {
+          parsedLinks.forEach(link => {
+            if (link.type === 'link') finalAttachments.push(link);
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing attachment links", e);
       }
     }
 
-    // 3. Create the Task (Group/Shared Task Logic)
+    // b. Process Uploaded Files
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        finalAttachments.push({
+          type: 'file',
+          url: `/uploads/${file.filename}`, // Assuming local uploads served statically
+          name: file.originalname
+        });
+      });
+    }
+
+    // 3. Handle Assignments
+    let finalAssignees = [];
+
+    if (assignmentType === 'me') {
+      finalAssignees = [creatorId];
+    } else {
+      // 'group' or 'individual'
+      if (typeof assignedTo === 'string') {
+        // If comma separated or single ID
+        finalAssignees = assignedTo.split(',').filter(id => id.trim().length > 0);
+      } else if (Array.isArray(assignedTo)) {
+        finalAssignees = assignedTo;
+      }
+
+      // Security Check for Assignees
+      if (finalAssignees.length > 0) {
+        const validUsersCount = await User.countDocuments({
+          _id: { $in: finalAssignees },
+          "memberships.organizationId": organizationId
+        });
+        if (validUsersCount !== finalAssignees.length) {
+          return res.status(403).json({ message: "Cannot assign tasks to users outside your organization." });
+        }
+      } else {
+        // Default to creator if empty (optional, or throw error)
+        finalAssignees = [creatorId];
+      }
+    }
+
+    // 4. Create Task
+    // Parse Todo Checklist if it's a string (FormData quirks)
+    let parsedChecklist = todoChecklist;
+    if (typeof todoChecklist === 'string') {
+      try {
+        parsedChecklist = JSON.parse(todoChecklist);
+      } catch (e) { parsedChecklist = []; }
+    }
+
     const newTask = new Task({
       title,
       description,
       priority: priority || 'Medium',
       status: 'Pending',
-      organizationId, // Automatically link to creator's org context
+      organizationId,
       assignedTo: finalAssignees,
       createdBy: creatorId,
       dueDate,
-      todoChecklist: todoChecklist || [],
-      attachments: attachments || [],
-      assignmentType: 'group' // Explicitly marking as group/shared
+      todoChecklist: parsedChecklist || [],
+      attachments: finalAttachments,
+      assignmentType: assignmentType || 'group'
     });
 
     const task = await newTask.save();
-
-    // Populate for immediate frontend display
     await task.populate("assignedTo", "name email profileImageUrl");
 
     res.status(201).json(task);

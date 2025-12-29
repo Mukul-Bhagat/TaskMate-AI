@@ -1,80 +1,91 @@
-import React, { useContext, useEffect, useState } from "react";
-import { SIDE_MENU_DATA, SIDE_MENU_USER_DATA } from "../../utils/data";
-import { UserContext } from "../../context/userContext";
-import { useNavigate } from "react-router-dom";
-import { LuLogOut } from "react-icons/lu";
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
+import { FaHome, FaTasks, FaPlusCircle, FaUsers, FaBuilding, FaTimes } from 'react-icons/fa';
 
-const SideMenu = ({ activeMenu }) => {
-  const { user, clearUser } = useContext(UserContext);
-  const [sideMenuData, setSideMenuData] = useState([]);
-  const navigate = useNavigate();
+const SideMenu = ({ isOpen, onClose }) => {
+  const location = useLocation();
+  const { darkMode } = useTheme();
 
-  const handleClick = (route) => {
-    navigate(route);
-  };
+  // 1. Get User Data Safely
+  const user = JSON.parse(localStorage.getItem('user')) || null;
+  const isAdmin = user?.role === 'admin';
 
-  const handleLogout = () => {
-    clearUser();
-    navigate("/login");
-  };
-
-  useEffect(() => {
-    if (user) {
-      setSideMenuData(
-        user.role === "admin" ? SIDE_MENU_DATA : SIDE_MENU_USER_DATA
-      );
-    }
-  }, [user]);
+  const isActive = (path) => location.pathname === path
+    ? 'text-red-600 bg-red-50 font-bold border-r-4 border-red-600 dark:bg-red-900/20 dark:text-red-400 dark:border-red-500'
+    : 'text-gray-600 hover:text-red-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-red-400';
 
   return (
-    <div className="w-64 h-[calc(100vh-61px)] bg-white border-r border-gray-200/50 sticky top-[61px] z-20 flex flex-col justify-between">
-      <div>
-        {/* Reverted Profile Section */}
-        <div className="flex flex-col items-center justify-center mb-7 pt-5 text-center">
-          <div className="relative">
-            <img
-              src={user?.profileImageUrl || null}
-              alt="Profile"
-              className="w-20 h-20 bg-slate-400 rounded-full object-cover"
-            />
-          </div>
-          {user?.role === "admin" && (
-            <div className="text-[10px] font-medium text-white bg-primary px-3 py-0.5 rounded mt-1">
-              Admin
-            </div>
-          )}
-          <h5 className="text-gray-950 font-medium leading-6 mt-3">
-            {user?.name || ""}
-          </h5>
-          <p className="text-[12px] text-gray-500">{user?.email || ""}</p>
+    <>
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+        onClick={onClose}
+      ></div>
+
+      <div className={`fixed lg:static top-0 left-0 h-full w-[260px] bg-white dark:bg-[#0f172a] border-r border-gray-100 dark:border-gray-800 flex flex-col transition-transform duration-300 z-50 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+
+        {/* Header */}
+        <div className="p-6 flex items-center justify-between shrink-0">
+          <img
+            src={darkMode ? "/whitelogo.png" : "/blacklogo.png"}
+            alt="TaskMate"
+            className="h-8 w-auto object-contain"
+          />
+          <button onClick={onClose} className="lg:hidden text-gray-500 dark:text-gray-400">
+            <FaTimes className="text-xl" />
+          </button>
         </div>
 
-        {sideMenuData.map((item, index) => (
-          <button
-            key={`menu_${index}`}
-            className={`w-full flex items-center gap-4 text-[15px] ${
-              activeMenu === item.label
-                ? "text-primary bg-gradient-to-r from-blue-50/40 to-blue-100/50 border-r-4 border-primary font-medium"
-                : "text-slate-600"
-            } py-3 px-6 mb-3 cursor-pointer hover:bg-gray-50`}
-            onClick={() => handleClick(item.path)}
-          >
-            <item.icon className="text-xl" />
-            {item.label}
-          </button>
-        ))}
-      </div>
+        {/* Navigation */}
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+          <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Main Menu</p>
 
-      <div className="p-4 border-t border-gray-200/80">
-        <button
-          className="w-full flex items-center gap-4 text-[15px] py-3 px-6 text-slate-600 hover:bg-gray-50 cursor-pointer"
-          onClick={handleLogout}
-        >
-          <LuLogOut className="text-xl" />
-          Logout
-        </button>
+          <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${isActive('/dashboard')}`}>
+            <FaHome className="w-5 text-center" /> Dashboard
+          </Link>
+
+          <Link to="/organization/tasks" className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${isActive('/organization/tasks')}`}>
+            <FaTasks className="w-5 text-center" /> Organization Tasks
+          </Link>
+
+          <Link to="/create-task" className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${isActive('/create-task')}`}>
+            <FaPlusCircle className="w-5 text-center" /> Create Task
+          </Link>
+
+          {/* 2. ADMIN ONLY SECTION */}
+          {isAdmin && (
+            <>
+              <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">Management</p>
+
+              <Link to="/organization/members" className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${isActive('/organization/members')}`}>
+                <FaUsers className="w-5 text-center" /> Manage Users
+              </Link>
+
+              <Link to="/profile?tab=organization" className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${isActive('/profile?tab=organization')}`}>
+                <FaBuilding className="w-5 text-center" /> Organization Settings
+              </Link>
+            </>
+          )}
+        </nav>
+
+        {/* 3. Footer Profile (Shows Real User Name) */}
+        {user ? (
+          <div className="p-4 border-t border-gray-100 dark:border-gray-800 shrink-0 bg-white dark:bg-[#0f172a]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 flex items-center justify-center font-bold border border-red-200 dark:border-red-800/50">
+                {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+              </div>
+              <div className="overflow-hidden">
+                <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{user.name}</h4>
+                <p className="text-xs text-gray-400 truncate dark:text-gray-500 capitalize">{user.role}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4"><Link to="/login" className="text-sm text-red-500">Login to view profile</Link></div>
+        )}
       </div>
-    </div>
+    </>
   );
 };
 

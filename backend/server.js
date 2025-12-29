@@ -39,7 +39,7 @@ app.use(
 );
 
 // Make the 'uploads' folder public
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Connect Database
 connectDB();

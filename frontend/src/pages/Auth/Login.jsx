@@ -13,7 +13,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
-  const {updateUser}= useContext(UserContext)
+  const { updateUser } = useContext(UserContext)
   const navigate = useNavigate();
 
   // Handle Login Form Submit
@@ -39,11 +39,16 @@ const Login = () => {
         password,
       });
 
-      const { token, role } = response.data;
+      const { token, role, requiresPasswordChange } = response.data;
 
       if (token) {
         localStorage.setItem("token", token);
         updateUser(response.data)
+
+        if (requiresPasswordChange) {
+          navigate("/change-password");
+          return;
+        }
 
         // Redirect based on role
         if (role === "admin") {
@@ -62,8 +67,8 @@ const Login = () => {
   }; // <-- The handleLogin function now correctly ends here
 
   const handleGoogleSignIn = () => {
-  window.location.href = `${BASE_URL}${API_PATHS.AUTH.GOOGLE_SIGNIN}`;
-};
+    window.location.href = `${BASE_URL}${API_PATHS.AUTH.GOOGLE_SIGNIN}`;
+  };
 
   // FIX #3: The return statement is now correctly placed in the component body
   return (
@@ -113,14 +118,14 @@ const Login = () => {
         </div>
 
         {/* Google Sign-in Button */}
-        <button 
-          onClick={handleGoogleSignIn} 
+        <button
+          onClick={handleGoogleSignIn}
           className="w-full flex items-center justify-center gap-3 card-btn"
         >
           <FcGoogle className="text-xl" />
           Sign in with Google
         </button>
-        
+
       </div>
     </AuthLayout>
   );

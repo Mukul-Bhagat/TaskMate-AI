@@ -4,9 +4,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 // Import all page components
 import Dashboard from './pages/Admin/Dashboard';
 import TaskMateLanding from './pages/Auth/TaskMateLanding';
-import SignIn from './pages/Auth/SignIn'; // Updated
-import SignUp from './pages/Auth/SignUp'; // Updated
-import Onboarding from './pages/Onboarding'; // New
+import SignIn from './pages/Auth/SignIn';
+import SignUp from './pages/Auth/SignUp';
+import Onboarding from './pages/Onboarding';
 import CreateTask from './pages/Admin/CreateTask';
 import ManageTasks from './pages/Admin/ManageTasks';
 import OrganizationTasks from './pages/Admin/OrganizationTasks';
@@ -18,6 +18,8 @@ import ViewTaskDetails from './pages/User/ViewTaskDetails';
 import MasterTaskView from './pages/Admin/MasterTaskView';
 import GoogleAuthCallback from './pages/Auth/GoogleAuthCallback';
 import JoinOrg from './pages/JoinOrg';
+import ChangePassword from './pages/Auth/ChangePassword';
+import Profile from './pages/Profile';
 
 // Import functional components
 import PrivateRoutes from './routes/PrivateRoutes';
@@ -25,7 +27,6 @@ import UserProvider, { UserContext } from './context/userContext';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {
-  // Main App Component with Routing
   return (
     <UserProvider>
       <Router>
@@ -41,14 +42,13 @@ const App = () => {
           {/* Protected Onboarding Route */}
           <Route element={<PrivateRoutes />}>
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/change-password" element={<ChangePassword />} />
           </Route>
 
           {/* Org Dashboard Routes */}
-          {/* Note: Roles are now organization-specific. The dashboard is shared logic-wise, 
-              but access might differ. For now, assuming anyone with access can see dashboard. */}
           <Route element={<PrivateRoutes allowedRoles={["admin", "member"]} />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            {/* Keeping old paths for compatibility or refactor them all to /dashboard later */}
+            {/* Redirects */}
             <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
             <Route path="/user/dashboard" element={<Navigate to="/dashboard" replace />} />
 
@@ -61,6 +61,7 @@ const App = () => {
 
             <Route path="/user/tasks" element={<MyTasks />} />
             <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
 
         </Routes>
@@ -76,7 +77,6 @@ const Root = () => {
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" />;
 
-  // Logic updated for new flow
   if (!user.memberships || user.memberships.length === 0) {
     return <Navigate to="/onboarding" />;
   }
