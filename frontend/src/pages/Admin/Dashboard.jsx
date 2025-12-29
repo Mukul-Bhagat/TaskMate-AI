@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { useUserAuth } from "../../hooks/useUserAuth";
-import { useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { UserContext } from "../../context/userContext";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import { useNavigate } from "react-router-dom";
@@ -9,158 +7,172 @@ import { API_PATHS } from "../../utils/apiPaths";
 import moment from "moment";
 import { addThousandsSeparator } from "../../utils/helper";
 import InfoCard from "../../components/Cards/InfoCard";
-import TaskListTable from "../../components/TaskListTable";
-import { LuArrowRight } from "react-icons/lu";
-import CustomPieChart from "../../components/Charts/CustomPieChart";
-import CustomBarChart from "../../components/Charts/CustomBarChart";
-
-const COLORS = ["#8D51FF","#00B8DB","#7BCE00"];
+import AvatarGroup from "../../components/layouts/AvatarGroup";
+import { MdAccessTime, MdWork, MdCheckCircle, MdFlag, MdCalendarToday } from "react-icons/md";
 
 const Dashboard = () => {
-  useUserAuth();
-
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState(null);
-  const [pieChartData, setPieChartData] = useState([]);
-  const [barChartData, setBarChartData] = useState([]);
+  const [inProgressTasks, setInProgressTasks] = useState([]);
+  const [myPriorities, setMyPriorities] = useState([]);
 
-  // Prepare Chart Data
-const prepareChartData = (data) => {
-  const taskDistribution = data?.taskDistribution || null;
-  const taskPriorityLevels = data?.taskPriorityLevels || null;
-
-  const taskDistributionData = [
-    { status: "Pending", count: taskDistribution?.Pending || 0 },
-    { status: "In Progress", count: taskDistribution?.InProgress || 0 },
-    { status: "Completed", count: taskDistribution?.Completed || 0 },
-  ];
-
-  setPieChartData(taskDistributionData);
-
-  const PriorityLevelData = [
-    { priority: "Low", count: taskPriorityLevels?.Low || 0 },
-    { priority: "Medium", count: taskPriorityLevels?.Medium || 0 },
-    { priority: "High", count: taskPriorityLevels?.High || 0 },
-  ];
-
-  setBarChartData(PriorityLevelData);
-};
-
+  // Fetch Dashboard Stats
   const getDashboardData = async () => {
     try {
-      const response = await axiosInstance.get(
-        API_PATHS.TASKS.GET_DASHBOARD_DATA
-      );
-      if (response.data) { 
+      const response = await axiosInstance.get(API_PATHS.TASKS.GET_DASHBOARD_DATA);
+      if (response.data) {
         setDashboardData(response.data);
-        prepareChartData(response.data?.charts || null)
       }
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching data:", error);
     }
   };
 
-  const onSeeMore = () =>{
-    navigate('/user/tasks')
-  }
+  // Widget A: Team Workload (In Progress Tasks)
+  const getInProgressTasks = async () => {
+    try {
+      const response = await axiosInstance.get(API_PATHS.TASKS.GET_ALL_TASKS, {
+        params: { status: "In Progress" }
+      });
+      setInProgressTasks(response.data.tasks || []);
+    } catch (error) {
+      console.error("Error fetching in-progress tasks", error);
+    }
+  };
 
+  // Widget B: My Upcoming Priorities
+  const getMyPriorities = async () => {
+    try {
+      const response = await axiosInstance.get(API_PATHS.TASKS.GET_ALL_TASKS, {
+        params: {
+          assignedTo: 'me',
+          status: "Pending", // Or just exclude Completed
+          sort: 'dueDate'
+        }
+      });
+      // Frontend filtering just in case, but backend should handle 'assignedTo=me'
+      const tasks = response.data.tasks?.filter(t => t.status !== 'Completed') || [];
+      setMyPriorities(tasks.slice(0, 5)); // Top 5
+    } catch (error) {
+      console.error("Error fetching my priorities", error);
+    }
+  };
 
   useEffect(() => {
     getDashboardData();
-    return () => {};
+    getInProgressTasks();
+    getMyPriorities();
   }, []);
 
   return (
     <DashboardLayout activeMenu="Dashboard">
-      <div className="card my-5">
+      <div className="my-5 space-y-8">
+
+        {/* Header */}
         <div>
-          <div className="col-span-3">
-            <h2 className="text-xl md:text-2xl">Good Morning! {user?.name}</h2>
-            <p className="text-xs md:text-[13px] text-gray-400 mt-1.5">
-              {moment().format("dddd Do MMM YYYY")}
-            </p>
-          </div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800">Welcome back, {user?.name?.split(" ")[0]}!</h2>
+          <p className="text-sm text-gray-500 mt-1 flex items-center">
+            <MdCalendarToday className="mr-2" /> {moment().format("dddd, MMMM Do YYYY")}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {/* Widget C: Project Overview Cards (Top Row) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <InfoCard
-            label="Total Tasks"
-            value={addThousandsSeparator(
-              (dashboardData?.charts?.taskDistribution?.Pending || 0) +
-              (dashboardData?.charts?.taskDistribution?.InProgress || 0) +
-              (dashboardData?.charts?.taskDistribution?.Completed || 0)
-            )}
-            color="bg-primary"
+            label="Total tasks"
+            value={dashboardData?.statistics?.totalTasks || 0}
+            icon={<MdWork className="text-white text-lg" />}
+            color="bg-blue-600"
           />
-
           <InfoCard
-            label="Pending Tasks"
-            value={addThousandsSeparator(
-              dashboardData?.charts?.taskDistribution?.Pending || 0
-            )}
-            color="bg-violet-500"
+            label="In Progress"
+            value={dashboardData?.charts?.taskDistribution?.InProgress || 0}
+            icon={<MdAccessTime className="text-white text-lg" />}
+            color="bg-yellow-500"
           />
-
           <InfoCard
-            label="In Progress Tasks"
-            value={addThousandsSeparator(
-              dashboardData?.charts?.taskDistribution?.InProgress || 0
-            )}
-            color="bg-cyan-500"
+            label="High Priority"
+            value={dashboardData?.statistics?.highPriorityTasks || 0}
+            icon={<MdFlag className="text-white text-lg" />}
+            color="bg-red-500"
           />
-
           <InfoCard
-            label="Complete Tasks"
-            value={addThousandsSeparator(
-              dashboardData?.charts?.taskDistribution?.Completed || 0
-            )}
-            color="bg-lime-500"
+            label="Completed Today"
+            value={dashboardData?.statistics?.completedTodayTasks || 0}
+            icon={<MdCheckCircle className="text-white text-lg" />}
+            color="bg-green-500"
           />
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4 md:my-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Widget A: Team Workload */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Team Workload <span className="text-gray-400 font-normal text-sm">(Active Tasks)</span></h3>
+            <div className="space-y-4">
+              {inProgressTasks.length > 0 ? (
+                inProgressTasks.map((task) => (
+                  <div key={task._id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
+                    <div className="flex items-center gap-4">
+                      <AvatarGroup avatars={task.assignedTo || []} maxVisible={2} />
+                      <div>
+                        <h4 className="font-medium text-gray-800 text-sm">{task.title}</h4>
+                        <p className="text-xs text-gray-500">
+                          {/* Org Name technically not in task unless populated, but we can show status or priority */}
+                          {task.priority} Priority
+                        </p>
+                      </div>
+                    </div>
 
-        <div>
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <h5 className="font-medium">Task Distribution</h5>
+                    <div className={`text-xs px-2 py-1 rounded font-medium ${moment(task.dueDate).isBefore(moment(), 'day') ? 'bg-red-100 text-red-700' :
+                      moment(task.dueDate).isSame(moment(), 'day') ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                      {moment(task.dueDate).format("MMM D")}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-8">Everyone is free! No active tasks.</p>
+              )}
             </div>
+          </div>
 
-            <CustomPieChart
-            data={pieChartData}
-            label="Total Balance"
-            colors={COLORS}
-            />
+          {/* Widget B: My Upcoming Priorities */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">My Upcoming Priorities</h3>
+            <div className="space-y-3">
+              {myPriorities.length > 0 ? (
+                myPriorities.map((task) => (
+                  <div key={task._id} className="p-3 border-l-4 border-l-primary bg-blue-50/50 rounded-r-md">
+                    <h4 className="font-medium text-gray-800 text-sm mb-1 line-clamp-1">{task.title}</h4>
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                      <span>{moment(task.dueDate).calendar(null, {
+                        sameDay: '[Today]',
+                        nextDay: '[Tomorrow]',
+                        nextWeek: 'dddd',
+                        lastDay: '[Yesterday]',
+                        lastWeek: '[Last] dddd',
+                        sameElse: 'MMM D'
+                      })}</span>
+                      <span className={`capitalize ${task.priority === 'High' ? 'text-red-600 font-bold' : ''
+                        }`}>{task.priority}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10">
+                  <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <MdCheckCircle className="text-xl" />
+                  </div>
+                  <p className="text-sm text-gray-500">You're all caught up!</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div>
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <h5 className="font-medium">Task Priority Level</h5>
-            </div>
-
-            <CustomBarChart
-            data={barChartData}
-            
-            />
-          </div>
-        </div>
-
-        <div className="md:col-span-2">
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <h5 className="text-lg">Recent Tasks</h5>
-             <button className="card-btn" onClick={onSeeMore}>
-               See All <LuArrowRight className="text-base" />
-             </button>
-            </div>
-          <TaskListTable tableData={dashboardData?.recentTasks || []} />
-          </div>
-       </div>
       </div>
     </DashboardLayout>
   );

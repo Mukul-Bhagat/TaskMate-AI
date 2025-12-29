@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import Modal from '../Model'; // Assuming Modal is exported as 'Modal' (or default) from ../Model.jsx
+import Modal from '../Modal'; // Assuming Modal is exported as 'Modal' (or default) from ../Model.jsx
 import axiosInstance from '../../utils/axiosInstance';
 import { UserContext } from '../../context/userContext';
 import toast from 'react-hot-toast';

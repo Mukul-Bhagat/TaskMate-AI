@@ -1,8 +1,41 @@
 import React from "react";
 import moment from "moment";
-import { LuPaperclip } from "react-icons/lu";
+import { MdAttachFile, MdMoreVert, MdEdit, MdDelete } from "react-icons/md";
 import Progress from "../layouts/Progress";
 import AvatarGroup from "../layouts/AvatarGroup"
+import { useState } from "react";
+
+const ActionMenu = ({ onEdit, onDelete }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-1 rounded-full hover:bg-gray-100 text-gray-500"
+      >
+        <MdMoreVert />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1">
+          <button
+            onClick={() => { setIsOpen(false); onEdit(); }}
+            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 bg-white"
+          >
+            <MdEdit className="mr-2 w-3 h-3" /> Edit
+          </button>
+          <button
+            onClick={() => { setIsOpen(false); onDelete(); }}
+            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 bg-white"
+          >
+            <MdDelete className="mr-2 w-3 h-3" /> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const TaskCard = ({
   title,
@@ -16,7 +49,10 @@ const TaskCard = ({
   attachmentCount,
   completedTodoCount,
   todoChecklist,
+
   onClick,
+  onEdit,
+  onDelete
 }) => {
   // Helper to get Tailwind classes for the status tag
   const getStatusTagColor = () => {
@@ -56,21 +92,25 @@ const TaskCard = ({
 
   return (
     <div
-      className="bg-white rounded-xl py-4 shadow-md shadow-gray-100 border border-gray-200/50 cursor-pointer"
+      className="bg-white rounded-xl py-4 shadow-md shadow-gray-100 border border-gray-200/50 cursor-pointer relative group"
       onClick={onClick}
     >
+      {/* Action Menu (Top Right) - Only visible on hover or if open */}
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        <ActionMenu onEdit={onEdit} onDelete={onDelete} />
+      </div >
       {/* Header: Status & Priority Tags */}
-      <div className="flex items-end gap-3 px-4">
+      < div className="flex items-end gap-3 px-4" >
         <div className={`text-[11px] font-medium ${getStatusTagColor()} px-4 py-0.5 rounded-full`}>
           {status}
         </div>
         <div className={`text-[11px] font-medium ${getPriorityTagColor()} px-4 py-0.5 rounded-full`}>
           {priority} Priority
         </div>
-      </div>
+      </div >
 
       {/* Main Content */}
-      <div className={`px-4 border-l-[3px] ${getStatusBorderColor()}`}>
+      < div className={`px-4 border-l-[3px] ${getStatusBorderColor()}`}>
         <p className="text-sm font-medium text-gray-800 mt-4 line-clamp-2">
           {title}
         </p>
@@ -84,10 +124,10 @@ const TaskCard = ({
           </span>
         </p>
         <Progress progress={progress} status={status} />
-      </div>
+      </div >
 
       {/* Dates Section */}
-      <div className="px-4 flex items-center justify-between my-1">
+      < div className="px-4 flex items-center justify-between my-1" >
         <div>
           <label className="text-xs text-gray-500">Start Date</label>
           <p className="text-[13px] font-medium text-gray-900">
@@ -100,19 +140,21 @@ const TaskCard = ({
             {moment(dueDate).format("Do MMM YYYY")}
           </p>
         </div>
-      </div>
+      </div >
 
       {/* Footer: Avatars & Attachments */}
-      <div className="flex items-center justify-between mt-3 px-4">
+      < div className="flex items-center justify-between mt-3 px-4" >
         <AvatarGroup avatars={assignedTo || []} />
-        {attachmentCount > 0 && (
-          <div className="flex items-center gap-2 bg-blue-50 px-2.5 py-1.5 rounded-lg">
-            <LuPaperclip className="text-primary" />
-            <span className="text-xs text-gray-900">{attachmentCount}</span>
-          </div>
-        )}
-      </div>
-    </div>
+        {
+          attachmentCount > 0 && (
+            <div className="flex items-center gap-2 bg-blue-50 px-2.5 py-1.5 rounded-lg">
+              <MdAttachFile className="text-primary" />
+              <span className="text-xs text-gray-900">{attachmentCount}</span>
+            </div>
+          )
+        }
+      </div >
+    </div >
   );
 };
 

@@ -9,7 +9,7 @@ const { google } = require("googleapis");
 
 const getTasks = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, sort, assignedTo } = req.query;
     let statusFilter = {};
 
     // Only apply a status filter if it's not "All"
@@ -19,25 +19,49 @@ const getTasks = async (req, res) => {
 
     // --- UPDATED LOGIC ---
 
-    // 1. Define a base filter for the user's role
-    let baseUserFilter =
-      req.user.role === "admin"
-        ? { createdBy: req.user._id }
-        : { assignedTo: req.user._id };
+    // 1. Define a base filter for the user's role AND Organization
+    const organizationId = req.headers['x-org-id'];
+    let baseUserFilter = {};
 
-    // 2. If the user is an admin, add the parentTask filter
-    // This ensures they only see master/group tasks
+    // Standard Logic
     if (req.user.role === "admin") {
+      baseUserFilter = { createdBy: req.user._id };
+    } else {
+      baseUserFilter = { assignedTo: req.user._id };
+    }
+
+    // Override if "assignedTo=me" explicitly requested (e.g. for Admin Dashboard Widget)
+    if (assignedTo === 'me') {
+      baseUserFilter = { assignedTo: req.user._id };
+    }
+
+    // Org Filter
+    if (organizationId) {
+      baseUserFilter.organizationId = organizationId;
+    }
+
+    // 2. If the user is an admin AND NOT filtering by "assignedTo=me", add the parentTask filter
+    // This ensures they only see master/group tasks in the main list
+    if (req.user.role === "admin" && assignedTo !== 'me') {
       baseUserFilter.parentTask = null;
     }
 
     // 3. The rest of the function now works with the correct filters
     const finalFilterForList = { ...baseUserFilter, ...statusFilter };
 
-    let tasks = await Task.find(finalFilterForList).populate(
+    let query = Task.find(finalFilterForList).populate(
       "assignedTo",
       "name email profileImageUrl"
     );
+
+    // Apply Sorting
+    if (sort === "dueDate") {
+      query = query.sort({ dueDate: 1 }); // Ascending (earliest first)
+    } else {
+      query = query.sort({ createdAt: -1 }); // Default new first
+    }
+
+    let tasks = await query;
 
     // This part of your code is perfect
     tasks = await Promise.all(
@@ -117,12 +141,18 @@ const createTask = async (req, res) => {
       return res.status(400).json({ message: "Task must be assigned to at least one user." });
     }
 
+    const organizationId = req.headers['x-org-id'];
+    if (!organizationId) {
+      return res.status(400).json({ message: "Organization ID is required" });
+    }
+
     if (assignmentType === "individual") {
       // 1. Create the main "master" task (not assigned to anyone)
       const masterTask = await Task.create({
         title, description, priority, dueDate, attachments, todoChecklist,
         assignmentType: "individual",
         createdBy: req.user._id,
+        organizationId,
         assignedTo: [], // Master task is a template, not assigned
       });
 
@@ -133,6 +163,7 @@ const createTask = async (req, res) => {
             title, description, priority, dueDate, attachments, todoChecklist,
             assignedTo: [userId], // Assign to only this one user
             createdBy: req.user._id,
+            organizationId,
             parentTask: masterTask._id, // Link back to the master task
           });
         })
@@ -142,10 +173,15 @@ const createTask = async (req, res) => {
       // This is the original "group" logic
       const groupTask = await Task.create({
         title, description, priority, dueDate, attachments, todoChecklist,
-        assignedTo,
+        assignedTo, // This is an array of IDs
         createdBy: req.user._id,
+        organizationId,
         assignmentType: "group",
       });
+
+      // Populate to return full details immediately
+      await groupTask.populate("assignedTo", "name email profileImageUrl");
+
       res.status(201).json({ message: "Group task created successfully", task: groupTask });
     }
   } catch (error) {
@@ -164,12 +200,18 @@ const updateTask = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
+    const organizationId = req.headers['x-org-id'];
+
+    if (task.organizationId && task.organizationId.toString() !== organizationId) {
+      return res.status(403).json({ message: "Access denied: Task belongs to another organization" });
+    }
+
     if (task.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorized to update this task" });
     }
 
     const updates = req.body;
-    
+
     // Update the main task
     Object.assign(task, updates);
     const updatedTask = await task.save();
@@ -202,6 +244,12 @@ const deleteTask = async (req, res) => {
 
     if (!task) return res.status(404).json({ message: "Task not found" });
 
+    const organizationId = req.headers['x-org-id'];
+
+    if (task.organizationId && task.organizationId.toString() !== organizationId) {
+      return res.status(403).json({ message: "Access denied: Task belongs to another organization" });
+    }
+
     if (task.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "User not authorized to modify this task" });
     }
@@ -218,7 +266,7 @@ const deleteTask = async (req, res) => {
 // @route   PUT /api/tasks/:id/status
 // @access  Private
 const updateTaskStatus = async (req, res) => {
-    try {
+  try {
     const task = await Task.findById(req.params.id);
 
     if (!task) return res.status(404).json({ message: "Task not found" });
@@ -301,6 +349,9 @@ const getDashboardData = async (req, res) => {
     const createdByFilter = { createdBy: req.user._id };
 
     // 2. APPLY THE FILTER to all statistics queries
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const totalTasks = await Task.countDocuments(createdByFilter);
     const pendingTasks = await Task.countDocuments({ ...createdByFilter, status: "Pending" });
     const completedTasks = await Task.countDocuments({ ...createdByFilter, status: "Completed" });
@@ -308,6 +359,16 @@ const getDashboardData = async (req, res) => {
       ...createdByFilter, // <-- Add filter
       status: { $ne: "Completed" },
       dueDate: { $lt: new Date() },
+    });
+    const highPriorityTasks = await Task.countDocuments({
+      ...createdByFilter,
+      status: { $ne: "Completed" },
+      priority: "High"
+    });
+    const completedTodayTasks = await Task.countDocuments({
+      ...createdByFilter,
+      status: "Completed",
+      updatedAt: { $gte: startOfToday }
     });
 
     // 3. APPLY THE FILTER to the aggregation queries using '$match'
@@ -328,9 +389,9 @@ const getDashboardData = async (req, res) => {
         taskDistributionRaw.find((item) => item._id === status)?.count || 0;
       return acc;
     }, {});
-    
+
     // Note: 'totalTasks' is already filtered, so this is now correct
-    taskDistribution["All"] = totalTasks; 
+    taskDistribution["All"] = totalTasks;
 
     const taskPriorities = ["Low", "Medium", "High"];
     const taskPriorityLevelsRaw = await Task.aggregate([
@@ -357,7 +418,7 @@ const getDashboardData = async (req, res) => {
 
     // The rest of your response is correct
     res.status(200).json({
-      statistics: { totalTasks, pendingTasks, completedTasks, overdueTasks },
+      statistics: { totalTasks, pendingTasks, completedTasks, overdueTasks, highPriorityTasks, completedTodayTasks },
       charts: { taskDistribution, taskPriorityLevels },
       recentTasks,
     });
@@ -508,10 +569,10 @@ const scheduleTaskOnCalendar = async (req, res) => {
         access_type: "offline", // 'offline' is required to get a refresh token
         scope: ["https://www.googleapis.com/auth/calendar"],
         // We can pass the taskId in the state to remember which task to schedule after auth
-        state: JSON.stringify({ taskId }), 
+        state: JSON.stringify({ taskId }),
       });
       // Send a special response that tells the frontend to redirect
-      return res.status(401).json({ 
+      return res.status(401).json({
         message: "Google Calendar authorization required.",
         authUrl: authUrl,
       });

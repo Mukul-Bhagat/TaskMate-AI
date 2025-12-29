@@ -4,13 +4,13 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { LuFileSpreadsheet, LuPlus } from "react-icons/lu"; // Added LuPlus
 import UserCard from "../../components/Cards/UserCard";
-import Modal from "../../components/Model"; // Import the Modal
+import Modal from "../../components/Modal"; // Import the Modal
 import Input from "../../components/inputs/input"; // Import the Input
 import toast from "react-hot-toast"; // Import toast for notifications
 
 const ManageUsers = () => {
   const [allUsers, setAllUsers] = useState([]);
-  
+
   // --- NEW STATE FOR THE INVITE MODAL ---
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -27,7 +27,7 @@ const ManageUsers = () => {
       toast.error("Failed to fetch team members.");
     }
   };
-  
+
   // --- NEW FUNCTION TO SEND THE INVITE ---
   const handleSendInvite = async (e) => {
     e.preventDefault();
@@ -73,7 +73,7 @@ const ManageUsers = () => {
       <div className="mt-5 mb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <h2 className="text-xl md:text-xl font-medium">Team Members</h2>
-          
+
           {/* --- UPDATED HEADER BUTTONS --- */}
           <div className="flex items-center gap-4">
             <button
@@ -88,7 +88,7 @@ const ManageUsers = () => {
             >
               <LuFileSpreadsheet className="text-lg" />
               Download Report
-            </button>            
+            </button>
           </div>
         </div>
 
@@ -98,7 +98,7 @@ const ManageUsers = () => {
           ))}
         </div>
       </div>
-      
+
       {/* --- NEW INVITE USER MODAL --- */}
       <Modal
         isOpen={isInviteModalOpen}

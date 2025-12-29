@@ -1,7 +1,7 @@
 import React from "react";
 
 const Modal = ({ children, isOpen, onClose, title }) => {
-  if (!isOpen) return ; // Don't render anything if the modal is closed
+  if (!isOpen) return; // Don't render anything if the modal is closed
 
   return (
     // Overlay
@@ -10,7 +10,7 @@ const Modal = ({ children, isOpen, onClose, title }) => {
       <div className="relative p-4 w-full max-w-2xl max-h-full">
         {/* Modal Content */}
         <div className="relative bg-white rounded-lg shadow-sm dark:bg-gray-80 ">
-          
+
           {/* Modal Header */}
           <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600 border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-600">

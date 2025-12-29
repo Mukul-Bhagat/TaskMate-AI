@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
 import { LuUsers } from "react-icons/lu"; // Added based on JSX
-import Modal from "../Model";
+import Modal from "../Modal";
 import AvatarGroup from "../layouts/AvatarGroup";
 
 const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {

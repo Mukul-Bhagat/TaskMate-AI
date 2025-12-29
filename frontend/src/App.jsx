@@ -10,6 +10,7 @@ import Onboarding from './pages/Onboarding'; // New
 import CreateTask from './pages/Admin/CreateTask';
 import ManageTasks from './pages/Admin/ManageTasks';
 import ManageUsers from './pages/Admin/ManageUsers';
+import Analytics from './pages/Admin/Analytics';
 import UserDashboard from './pages/User/UserDashboard';
 import MyTasks from './pages/User/MyTasks';
 import ViewTaskDetails from './pages/User/ViewTaskDetails';
@@ -49,9 +50,10 @@ const App = () => {
             <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
             <Route path="/user/dashboard" element={<Navigate to="/dashboard" replace />} />
 
-            <Route path="/admin/tasks" element={<ManageTasks />} />
+            <Route path="/manage-tasks" element={<ManageTasks />} />
+            <Route path="/manage-users" element={<ManageUsers />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/admin/create-task" element={<CreateTask />} />
-            <Route path="/admin/users" element={<ManageUsers />} />
             <Route path="/admin/master-task/:id" element={<MasterTaskView />} />
 
             <Route path="/user/tasks" element={<MyTasks />} />
